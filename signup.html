@@ -249,9 +249,9 @@ import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.
 // Fetch Firebase config from Netlify function
 const res = await fetch('/.netlify/functions/get-firebase');
 if (!res.ok) throw new Error('Failed to fetch Firebase config');
-const firebaseConfig = await res.json();
+const data = await res.json(); // { firebaseConfig: { ... } }
 
-const app = initializeApp(firebaseConfig);
+const app = initializeApp(data.firebaseConfig); // use data.firebaseConfig, not data
 const auth = getAuth(app);
 const db = getFirestore(app);
 
