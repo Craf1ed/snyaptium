@@ -7,7 +7,6 @@ let firebaseConfig;
 let API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-// --- Securely fetch Firebase config and AI API key ---
 async function loadEnv() {
   const [firebaseRes, aiRes] = await Promise.all([
     fetch('/.netlify/functions/get-firebase'),
@@ -19,7 +18,6 @@ async function loadEnv() {
   API_KEY = aiData.apiKey;
 }
 
-// --- Initialize everything after env loads ---
 await loadEnv();
 
 const app = initializeApp(firebaseConfig);
@@ -44,21 +42,43 @@ const SYSTEM_PROMPT = {
   content: 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.'
 };
 
+function initSpeechRecognition() {
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = function(event) {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById('userInput').value = transcript;
+      autoResize(document.getElementById('userInput'));
+    };
+
+    recognition.onerror = function(event) {
+      console.error('Speech recognition error:', event.error);
+      stopVoiceInput();
+    };
+
+    recognition.onend = function() {
+      stopVoiceInput();
+    };
+  }
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'flex';
     
-    // Load user profile data
     await loadUserProfile();
-      initSpeechRecognition();
+    initSpeechRecognition();
     await loadChatHistory();
     
-    // Initialize custom dropdown
     initCustomDropdown();
     
-    // Generate AI recommendations after 1 second
     setTimeout(() => {
       generateRecommendations();
     }, 1000);
@@ -66,715 +86,698 @@ onAuthStateChanged(auth, async (user) => {
     window.location.href = 'signup.html';
   }
 
-async function loadUserProfile() {
-  try {
-    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    const userData = userDoc.exists() ? userDoc.data() : {};
-    
-    const displayName = userData.displayName || currentUser.displayName || currentUser.email;
-    userProfilePic = userData.profilePicURL || null;
-    
-    document.getElementById('userName').textContent = displayName;
-    
-    // Update welcome message
-    document.getElementById('welcomeTitle').textContent = `Welcome to Snyaptium, ${displayName.split(' ')[0]}`;
-    
-  } catch (error) {
-    console.error('Error loading user profile:', error);
-    document.getElementById('userName').textContent = currentUser.displayName || currentUser.email;
-  }
-}
-
-window.openSettings = async function() {
-  const settingsOverlay = document.getElementById('settingsOverlay');
-  const settingsName = document.getElementById('settingsName');
-  const settingsPassword = document.getElementById('settingsPassword');
-  const settingsPasswordConfirm = document.getElementById('settingsPasswordConfirm');
-  const profilePicPreview = document.getElementById('profilePicPreview');
-  const profilePicInitial = document.getElementById('profilePicInitial');
-  
-  // Load current user data
-  try {
-    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    const userData = userDoc.exists() ? userDoc.data() : {};
-    
-    settingsName.value = userData.displayName || currentUser.displayName || '';
-    settingsPassword.value = '';
-    settingsPasswordConfirm.value = '';
-    
-    // Display current profile picture
-    if (userData.profilePicURL) {
-      profilePicPreview.innerHTML = `<img src="${userData.profilePicURL}" alt="Profile">`;
-    } else {
-      const initial = (userData.displayName || currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
-      profilePicInitial.textContent = initial;
-      profilePicPreview.innerHTML = `<span id="profilePicInitial">${initial}</span>`;
-    }
-    
-  } catch (error) {
-    console.error('Error loading settings:', error);
-  }
-  
-  settingsOverlay.classList.add('active');
-}
-
-// Handle profile picture upload
-document.getElementById('profilePicInput').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      document.getElementById('profilePicPreview').innerHTML = `<img src="${event.target.result}" alt="Profile">`;
-    };
-    reader.readAsDataURL(file);
-  }
-});
-
-// Remove profile picture
-document.getElementById('removePicBtn').addEventListener('click', function() {
-  const profilePicPreview = document.getElementById('profilePicPreview');
-  const settingsName = document.getElementById('settingsName');
-  const initial = (settingsName.value || currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
-  
-  profilePicPreview.innerHTML = `<span id="profilePicInitial">${initial}</span>`;
-  document.getElementById('profilePicInput').value = '';
-});
-
-// Save settings
-document.getElementById('settingsSave').addEventListener('click', async function() {
-  const settingsName = document.getElementById('settingsName').value.trim();
-  const settingsPassword = document.getElementById('settingsPassword').value;
-  const settingsPasswordConfirm = document.getElementById('settingsPasswordConfirm').value;
-  const profilePicInput = document.getElementById('profilePicInput');
-  
-  try {
-    // Validate passwords match
-    if (settingsPassword && settingsPassword !== settingsPasswordConfirm) {
-      alert('Passwords do not match!');
-      return;
-    }
-    
-    let profilePicURL = userProfilePic;
-    
-    // Upload new profile picture if selected
-    if (profilePicInput.files[0]) {
-  const file = profilePicInput.files[0];
-  const reader = new FileReader();
-  
-  profilePicURL = await new Promise((resolve, reject) => {
-    reader.onload = () => resolve(reader.result); // Base64 string
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
- else if (!document.getElementById('profilePicPreview').querySelector('img')) {
-      // User removed the picture
-      if (userProfilePic) {
-        try {
-          const storageRef = ref(storage, `profilePics/${currentUser.uid}`);
-          await deleteObject(storageRef);
-        } catch (error) {
-          console.log('No profile pic to delete or error:', error);
-        }
-      }
-      profilePicURL = null;
-    }
-    
-    // Update Firebase Auth profile
-    if (settingsName) {
-      await updateProfile(currentUser, {
-        displayName: settingsName
-      });
-    }
-    
-    // Update password if provided
-    if (settingsPassword) {
-      await updatePassword(currentUser, settingsPassword);
-    }
-    
-    // Update Firestore user document
-    await setDoc(doc(db, 'users', currentUser.uid), {
-      displayName: settingsName || currentUser.displayName,
-      profilePicURL: profilePicURL,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    
-    userProfilePic = profilePicURL;
-    
-    // Update UI
-    await loadUserProfile();
-    
-    // Close settings
-    document.getElementById('settingsOverlay').classList.remove('active');
-    
-    alert('Settings saved successfully!');
-    
-  } catch (error) {
-    console.error('Error saving settings:', error);
-    alert('Error saving settings: ' + error.message);
-  }
-});
-
-// Cancel settings
-document.getElementById('settingsCancel').addEventListener('click', function() {
-  document.getElementById('settingsOverlay').classList.remove('active');
-});
-
-// Close settings overlay when clicking outside
-document.getElementById('settingsOverlay').addEventListener('click', function(e) {
-  if (e.target === this) {
-    this.classList.remove('active');
-  }
-});
-
-// Close settings with Escape key
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    document.getElementById('settingsOverlay').classList.remove('active');
-  }
-});
-
-window.handleLogout = async function() {
-  try {
-    await signOut(auth);
-    window.location.href = 'signup.html';
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
-}
-
-async function loadChatHistory() {
-  try {
-    const q = query(
-      collection(db, 'chats'),
-      where('userId', '==', currentUser.uid)
-    );
-    const querySnapshot = await getDocs(q);
-    chatHistory = [];
-    querySnapshot.forEach((doc) => {
-      chatHistory.push({ id: doc.id, ...doc.data() });
-    });
-    chatHistory.sort((a, b) => {
-      const aTime = a.updatedAt?.toMillis() || 0;
-      const bTime = b.updatedAt?.toMillis() || 0;
-      return bTime - aTime;
-    });
-    updateHistoryList();
-  } catch (error) {
-    console.error('Error loading chat history:', error);
-  }
-}
-
-function updateHistoryList() {
-  const historyList = document.getElementById('historyList');
-  historyList.innerHTML = chatHistory.map(chat => `
-    <div class="history-item ${currentChatId === chat.id ? 'active' : ''}" onclick="loadChat('${chat.id}')">
-      <div class="history-item-title">${chat.title || 'New Chat'}</div>
-      <button class="delete-chat-btn" onclick="event.stopPropagation(); deleteChat('${chat.id}')">
-        <i class="fas fa-trash"></i>
-      </button>
-    </div>
-  `).join('');
-}
-
-window.deleteChat = async function(chatId) {
-  const confirmOverlay = document.getElementById('confirmOverlay');
-  const confirmDelete = document.getElementById('confirmDelete');
-  const confirmCancel = document.getElementById('confirmCancel');
-  
-  confirmOverlay.classList.add('active');
-  
-  const userDecision = await new Promise((resolve) => {
-    const deleteHandler = () => {
-      cleanup();
-      resolve(true);
-    };
-    
-    const cancelHandler = () => {
-      cleanup();
-      resolve(false);
-    };
-    
-    const escapeHandler = (e) => {
-      if (e.key === 'Escape') {
-        cleanup();
-        resolve(false);
-      }
-    };
-    
-    const overlayHandler = (e) => {
-      if (e.target === confirmOverlay) {
-        cleanup();
-        resolve(false);
-      }
-    };
-    
-    const cleanup = () => {
-      confirmDelete.removeEventListener('click', deleteHandler);
-      confirmCancel.removeEventListener('click', cancelHandler);
-      document.removeEventListener('keydown', escapeHandler);
-      confirmOverlay.removeEventListener('click', overlayHandler);
-      confirmOverlay.classList.remove('active');
-    };
-    
-    confirmDelete.addEventListener('click', deleteHandler);
-    confirmCancel.addEventListener('click', cancelHandler);
-    document.addEventListener('keydown', escapeHandler);
-    confirmOverlay.addEventListener('click', overlayHandler);
-  });
-  
-  if (userDecision) {
+  async function loadUserProfile() {
     try {
-      await deleteDoc(doc(db, 'chats', chatId));
-      if (currentChatId === chatId) {
-        newChat();
-      }
-      await loadChatHistory();
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      const userData = userDoc.exists() ? userDoc.data() : {};
+      
+      const displayName = userData.displayName || currentUser.displayName || currentUser.email;
+      userProfilePic = userData.profilePicURL || null;
+      
+      document.getElementById('userName').textContent = displayName;
+      
+      document.getElementById('welcomeTitle').textContent = `Welcome to Snyaptium, ${displayName.split(' ')[0]}`;
+      
     } catch (error) {
-      console.error('Error deleting chat:', error);
+      console.error('Error loading user profile:', error);
+      document.getElementById('userName').textContent = currentUser.displayName || currentUser.email;
     }
   }
-}
 
-window.loadChat = async function(chatId) {
-  const chat = chatHistory.find(c => c.id === chatId);
-  if (chat) {
-    currentChatId = chatId;
-    messages = chat.messages || [];
-    currentModel = chat.model || 'llama-3.3-70b-versatile';
+  window.openSettings = async function() {
+    const settingsOverlay = document.getElementById('settingsOverlay');
+    const settingsName = document.getElementById('settingsName');
+    const settingsPassword = document.getElementById('settingsPassword');
+    const settingsPasswordConfirm = document.getElementById('settingsPasswordConfirm');
+    const profilePicPreview = document.getElementById('profilePicPreview');
+    const profilePicInitial = document.getElementById('profilePicInitial');
     
-    const modelNames = {
-      'llama-3.3-70b-versatile': 'LLaMA 3.3 70B Versatile',
-      'llama-3.1-8b-instant': 'LLaMA 3.1 8B Instant',
-      'compound-beta': 'Groq Compound Beta',
-      'openai/gpt-oss-120b': 'GPT OSS 120B',
-      'openai/gpt-oss-20b': 'GPT OSS 20B'
-    };
-    document.getElementById('selectedModel').textContent = modelNames[currentModel] || 'LLaMA 3.3 70B Versatile';
-    
-    const modelOptions = document.querySelectorAll('.model-option');
-    modelOptions.forEach(opt => {
-      if (opt.getAttribute('data-value') === currentModel) {
-        opt.classList.add('selected');
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      const userData = userDoc.exists() ? userDoc.data() : {};
+      
+      settingsName.value = userData.displayName || currentUser.displayName || '';
+      settingsPassword.value = '';
+      settingsPasswordConfirm.value = '';
+      
+      if (userData.profilePicURL) {
+        profilePicPreview.innerHTML = `<img src="${userData.profilePicURL}" alt="Profile">`;
       } else {
-        opt.classList.remove('selected');
+        const initial = (userData.displayName || currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
+        profilePicInitial.textContent = initial;
+        profilePicPreview.innerHTML = `<span id="profilePicInitial">${initial}</span>`;
       }
-    });
-    
-    const chatContainer = document.getElementById('chatContainer');
-    chatContainer.innerHTML = '';
-    messages.forEach(msg => {
-      if (msg.role === 'user') {
-        addMessageToUI(msg.content, 'user');
-      } else if (msg.role === 'assistant') {
-        addMessageToUI(msg.content, 'ai');
-      }
-    });
-    updateHistoryList();
-  }
-}
-
-async function saveCurrentChat() {
-  if (!currentUser || messages.length === 0) return;
-  
-  try {
-    let chatTitle = messages[0]?.content?.substring(0, 50) || 'New Chat';
-    
-    if (!currentChatId && messages.length >= 2) {
-      chatTitle = await generateChatTitle();
+      
+    } catch (error) {
+      console.error('Error loading settings:', error);
     }
     
-    const chatData = {
-      userId: currentUser.uid,
-      title: chatTitle,
-      messages: messages,
-      model: currentModel,
-      updatedAt: serverTimestamp()
-    };
-    
-    if (currentChatId) {
-      await updateDoc(doc(db, 'chats', currentChatId), chatData);
-    } else {
-      const docRef = await addDoc(collection(db, 'chats'), {
-        ...chatData,
-        createdAt: serverTimestamp()
-      });
-      currentChatId = docRef.id;
-    }
-    await loadChatHistory();
-  } catch (error) {
-    console.error('Error saving chat:', error);
+    settingsOverlay.classList.add('active');
   }
-}
 
-window.newChat = async function() {
-  currentChatId = null;
-  messages = [];
-  const chatContainer = document.getElementById('chatContainer');
-  
-  // Get user's first name for welcome message
-  const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-  const userData = userDoc.exists() ? userDoc.data() : {};
-  const displayName = userData.displayName || currentUser.displayName || currentUser.email;
-  const firstName = displayName.split(' ')[0];
-  
-  if (aiRecommendations.length === 0) {
-    chatContainer.innerHTML = `
-      <div class="welcome-screen">
-        <div class="welcome-title">Welcome to Snyaptium, ${firstName}</div>
-        <div class="welcome-subtitle">Your intelligent AI companion ready to assist with any task.</div>
-        <div class="suggestion-cards">
-          <div class="suggestion-card generating">
-            <div class="suggestion-card-title">Generating...</div>
-            <div class="suggestion-card-text">AI is creating suggestions</div>
-          </div>
-          <div class="suggestion-card generating">
-            <div class="suggestion-card-title">Generating...</div>
-            <div class="suggestion-card-text">AI is creating suggestions</div>
-          </div>
-          <div class="suggestion-card generating">
-            <div class="suggestion-card-title">Generating...</div>
-            <div class="suggestion-card-text">AI is creating suggestions</div>
-          </div>
-          <div class="suggestion-card generating">
-            <div class="suggestion-card-title">Generating...</div>
-            <div class="suggestion-card-text">AI is creating suggestions</div>
-          </div>
-        </div>
-      </div>
-    `;
-  } else {
-    chatContainer.innerHTML = `
-      <div class="welcome-screen">
-        <div class="welcome-title">Welcome to Snyaptium, ${firstName}</div>
-        <div class="welcome-subtitle">Your intelligent AI companion ready to assist with any task.</div>
-        <div class="suggestion-cards">
-          ${aiRecommendations.map((s, index) => `
-            <div class="suggestion-card loaded" style="animation-delay: ${index * 0.1}s" onclick="useSuggestion('${s.prompt.replace(/'/g, "\\'")}')">
-              <div class="suggestion-card-title">${s.title}</div>
-              <div class="suggestion-card-text">${s.text}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-  updateHistoryList();
-}
-
-function initCustomDropdown() {
-  const customSelect = document.getElementById('customSelect');
-  const modelOverlay = document.getElementById('modelOverlay');
-  const selectedModel = document.getElementById('selectedModel');
-  const modelOptions = document.querySelectorAll('.model-option');
-
-  customSelect.addEventListener('click', function(e) {
-    e.stopPropagation();
-    modelOverlay.classList.add('active');
-  });
-
-  modelOverlay.addEventListener('click', function(e) {
-    if (e.target === modelOverlay) {
-      modelOverlay.classList.remove('active');
+  document.getElementById('profilePicInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        document.getElementById('profilePicPreview').innerHTML = `<img src="${event.target.result}" alt="Profile">`;
+      };
+      reader.readAsDataURL(file);
     }
   });
 
-  modelOptions.forEach(option => {
-    option.addEventListener('click', function(e) {
-      e.stopPropagation();
+  document.getElementById('removePicBtn').addEventListener('click', function() {
+    const profilePicPreview = document.getElementById('profilePicPreview');
+    const settingsName = document.getElementById('settingsName');
+    const initial = (settingsName.value || currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
+    
+    profilePicPreview.innerHTML = `<span id="profilePicInitial">${initial}</span>`;
+    document.getElementById('profilePicInput').value = '';
+  });
+
+  document.getElementById('settingsSave').addEventListener('click', async function() {
+    const settingsName = document.getElementById('settingsName').value.trim();
+    const settingsPassword = document.getElementById('settingsPassword').value;
+    const settingsPasswordConfirm = document.getElementById('settingsPasswordConfirm').value;
+    const profilePicInput = document.getElementById('profilePicInput');
+    
+    try {
+      if (settingsPassword && settingsPassword !== settingsPasswordConfirm) {
+        alert('Passwords do not match!');
+        return;
+      }
       
-      modelOptions.forEach(opt => opt.classList.remove('selected'));
-      this.classList.add('selected');
+      let profilePicURL = userProfilePic;
       
-      const modelName = this.querySelector('.model-option-name').textContent;
-      selectedModel.textContent = modelName;
-      currentModel = this.getAttribute('data-value');
+      if (profilePicInput.files[0]) {
+        const file = profilePicInput.files[0];
+        const reader = new FileReader();
+        
+        profilePicURL = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else if (!document.getElementById('profilePicPreview').querySelector('img')) {
+        if (userProfilePic) {
+          try {
+            const storageRef = ref(storage, `profilePics/${currentUser.uid}`);
+            await deleteObject(storageRef);
+          } catch (error) {
+            console.log('No profile pic to delete or error:', error);
+          }
+        }
+        profilePicURL = null;
+      }
       
-      modelOverlay.classList.remove('active');
+      if (settingsName) {
+        await updateProfile(currentUser, {
+          displayName: settingsName
+        });
+      }
       
-      addSystemMessage(`Model changed to ${modelName}`);
-    });
+      if (settingsPassword) {
+        await updatePassword(currentUser, settingsPassword);
+      }
+      
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        displayName: settingsName || currentUser.displayName,
+        profilePicURL: profilePicURL,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      
+      userProfilePic = profilePicURL;
+      
+      await loadUserProfile();
+      
+      document.getElementById('settingsOverlay').classList.remove('active');
+      
+      alert('Settings saved successfully!');
+      
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings: ' + error.message);
+    }
+  });
+
+  document.getElementById('settingsCancel').addEventListener('click', function() {
+    document.getElementById('settingsOverlay').classList.remove('active');
+  });
+
+  document.getElementById('settingsOverlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+      this.classList.remove('active');
+    }
   });
 
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-      modelOverlay.classList.remove('active');
+      document.getElementById('settingsOverlay').classList.remove('active');
     }
   });
-}
 
-window.useSuggestion = function(text) {
-  document.getElementById('userInput').value = text;
-  sendMessage();
-}
+  window.handleLogout = async function() {
+    try {
+      await signOut(auth);
+      window.location.href = 'signup.html';
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  }
 
-window.autoResize = function(textarea) {
-  textarea.style.height = 'auto';
-  textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
-}
+  async function loadChatHistory() {
+    try {
+      const q = query(
+        collection(db, 'chats'),
+        where('userId', '==', currentUser.uid)
+      );
+      const querySnapshot = await getDocs(q);
+      chatHistory = [];
+      querySnapshot.forEach((doc) => {
+        chatHistory.push({ id: doc.id, ...doc.data() });
+      });
+      chatHistory.sort((a, b) => {
+        const aTime = a.updatedAt?.toMillis() || 0;
+        const bTime = b.updatedAt?.toMillis() || 0;
+        return bTime - aTime;
+      });
+      updateHistoryList();
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  }
 
-window.handleKeyPress = function(event) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
+  function updateHistoryList() {
+    const historyList = document.getElementById('historyList');
+    historyList.innerHTML = chatHistory.map(chat => `
+      <div class="history-item ${currentChatId === chat.id ? 'active' : ''}" onclick="loadChat('${chat.id}')">
+        <div class="history-item-title">${chat.title || 'New Chat'}</div>
+        <button class="delete-chat-btn" onclick="event.stopPropagation(); deleteChat('${chat.id}')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  window.deleteChat = async function(chatId) {
+    const confirmOverlay = document.getElementById('confirmOverlay');
+    const confirmDelete = document.getElementById('confirmDelete');
+    const confirmCancel = document.getElementById('confirmCancel');
+    
+    confirmOverlay.classList.add('active');
+    
+    const userDecision = await new Promise((resolve) => {
+      const deleteHandler = () => {
+        cleanup();
+        resolve(true);
+      };
+      
+      const cancelHandler = () => {
+        cleanup();
+        resolve(false);
+      };
+      
+      const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+          cleanup();
+          resolve(false);
+        }
+      };
+      
+      const overlayHandler = (e) => {
+        if (e.target === confirmOverlay) {
+          cleanup();
+          resolve(false);
+        }
+      };
+      
+      const cleanup = () => {
+        confirmDelete.removeEventListener('click', deleteHandler);
+        confirmCancel.removeEventListener('click', cancelHandler);
+        document.removeEventListener('keydown', escapeHandler);
+        confirmOverlay.removeEventListener('click', overlayHandler);
+        confirmOverlay.classList.remove('active');
+      };
+      
+      confirmDelete.addEventListener('click', deleteHandler);
+      confirmCancel.addEventListener('click', cancelHandler);
+      document.addEventListener('keydown', escapeHandler);
+      confirmOverlay.addEventListener('click', overlayHandler);
+    });
+    
+    if (userDecision) {
+      try {
+        await deleteDoc(doc(db, 'chats', chatId));
+        if (currentChatId === chatId) {
+          newChat();
+        }
+        await loadChatHistory();
+      } catch (error) {
+        console.error('Error deleting chat:', error);
+      }
+    }
+  }
+
+  window.loadChat = async function(chatId) {
+    const chat = chatHistory.find(c => c.id === chatId);
+    if (chat) {
+      currentChatId = chatId;
+      messages = chat.messages || [];
+      currentModel = chat.model || 'llama-3.3-70b-versatile';
+      
+      const modelNames = {
+        'llama-3.3-70b-versatile': 'LLaMA 3.3 70B Versatile',
+        'llama-3.1-8b-instant': 'LLaMA 3.1 8B Instant',
+        'compound-beta': 'Groq Compound Beta',
+        'openai/gpt-oss-120b': 'GPT OSS 120B',
+        'openai/gpt-oss-20b': 'GPT OSS 20B'
+      };
+      document.getElementById('selectedModel').textContent = modelNames[currentModel] || 'LLaMA 3.3 70B Versatile';
+      
+      const modelOptions = document.querySelectorAll('.model-option');
+      modelOptions.forEach(opt => {
+        if (opt.getAttribute('data-value') === currentModel) {
+          opt.classList.add('selected');
+        } else {
+          opt.classList.remove('selected');
+        }
+      });
+      
+      const chatContainer = document.getElementById('chatContainer');
+      chatContainer.innerHTML = '';
+      messages.forEach(msg => {
+        if (msg.role === 'user') {
+          addMessageToUI(msg.content, 'user');
+        } else if (msg.role === 'assistant') {
+          addMessageToUI(msg.content, 'ai');
+        }
+      });
+      updateHistoryList();
+    }
+  }
+
+  async function saveCurrentChat() {
+    if (!currentUser || messages.length === 0) return;
+    
+    try {
+      let chatTitle = messages[0]?.content?.substring(0, 50) || 'New Chat';
+      
+      if (!currentChatId && messages.length >= 2) {
+        chatTitle = await generateChatTitle();
+      }
+      
+      const chatData = {
+        userId: currentUser.uid,
+        title: chatTitle,
+        messages: messages,
+        model: currentModel,
+        updatedAt: serverTimestamp()
+      };
+      
+      if (currentChatId) {
+        await updateDoc(doc(db, 'chats', currentChatId), chatData);
+      } else {
+        const docRef = await addDoc(collection(db, 'chats'), {
+          ...chatData,
+          createdAt: serverTimestamp()
+        });
+        currentChatId = docRef.id;
+      }
+      await loadChatHistory();
+    } catch (error) {
+      console.error('Error saving chat:', error);
+    }
+  }
+
+  window.newChat = async function() {
+    currentChatId = null;
+    messages = [];
+    const chatContainer = document.getElementById('chatContainer');
+    
+    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+    const userData = userDoc.exists() ? userDoc.data() : {};
+    const displayName = userData.displayName || currentUser.displayName || currentUser.email;
+    const firstName = displayName.split(' ')[0];
+    
+    if (aiRecommendations.length === 0) {
+      chatContainer.innerHTML = `
+        <div class="welcome-screen">
+          <div class="welcome-title">Welcome to Snyaptium, ${firstName}</div>
+          <div class="welcome-subtitle">Your intelligent AI companion ready to assist with any task.</div>
+          <div class="suggestion-cards">
+            <div class="suggestion-card generating">
+              <div class="suggestion-card-title">Generating...</div>
+              <div class="suggestion-card-text">AI is creating suggestions</div>
+            </div>
+            <div class="suggestion-card generating">
+              <div class="suggestion-card-title">Generating...</div>
+              <div class="suggestion-card-text">AI is creating suggestions</div>
+            </div>
+            <div class="suggestion-card generating">
+              <div class="suggestion-card-title">Generating...</div>
+              <div class="suggestion-card-text">AI is creating suggestions</div>
+            </div>
+            <div class="suggestion-card generating">
+              <div class="suggestion-card-title">Generating...</div>
+              <div class="suggestion-card-text">AI is creating suggestions</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      chatContainer.innerHTML = `
+        <div class="welcome-screen">
+          <div class="welcome-title">Welcome to Snyaptium, ${firstName}</div>
+          <div class="welcome-subtitle">Your intelligent AI companion ready to assist with any task.</div>
+          <div class="suggestion-cards">
+            ${aiRecommendations.map((s, index) => `
+              <div class="suggestion-card loaded" style="animation-delay: ${index * 0.1}s" onclick="useSuggestion('${s.prompt.replace(/'/g, "\\'")}')">
+                <div class="suggestion-card-title">${s.title}</div>
+                <div class="suggestion-card-text">${s.text}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+    updateHistoryList();
+  }
+
+  function initCustomDropdown() {
+    const customSelect = document.getElementById('customSelect');
+    const modelOverlay = document.getElementById('modelOverlay');
+    const selectedModel = document.getElementById('selectedModel');
+    const modelOptions = document.querySelectorAll('.model-option');
+
+    customSelect.addEventListener('click', function(e) {
+      e.stopPropagation();
+      modelOverlay.classList.add('active');
+    });
+
+    modelOverlay.addEventListener('click', function(e) {
+      if (e.target === modelOverlay) {
+        modelOverlay.classList.remove('active');
+      }
+    });
+
+    modelOptions.forEach(option => {
+      option.addEventListener('click', function(e) {
+        e.stopPropagation();
+        
+        modelOptions.forEach(opt => opt.classList.remove('selected'));
+        this.classList.add('selected');
+        
+        const modelName = this.querySelector('.model-option-name').textContent;
+        selectedModel.textContent = modelName;
+        currentModel = this.getAttribute('data-value');
+        
+        modelOverlay.classList.remove('active');
+        
+        addSystemMessage(`Model changed to ${modelName}`);
+      });
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        modelOverlay.classList.remove('active');
+      }
+    });
+  }
+
+  window.useSuggestion = function(text) {
+    document.getElementById('userInput').value = text;
     sendMessage();
   }
-}
 
-function hideWelcomeScreen() {
-  const welcomeScreen = document.querySelector('.welcome-screen');
-  if (welcomeScreen) welcomeScreen.remove();
-}
+  window.autoResize = function(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+  }
 
-function addMessageToUI(content, type) {
-  hideWelcomeScreen();
-  const chatContainer = document.getElementById('chatContainer');
-  const wrapper = document.createElement('div');
-  wrapper.className = `message-wrapper ${type}`;
-  
-  const avatar = document.createElement('div');
-  avatar.className = `avatar ${type}`;
-  
-  if (type === 'user') {
-    if (userProfilePic) {
-      avatar.classList.add('has-image');
-      const img = document.createElement('img');
-      img.src = userProfilePic;
-      img.alt = 'User';
-      avatar.appendChild(img);
-    } else {
-      const initial = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
-      avatar.textContent = initial;
+  window.handleKeyPress = function(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage();
     }
-  } else {
+  }
+
+  function hideWelcomeScreen() {
+    const welcomeScreen = document.querySelector('.welcome-screen');
+    if (welcomeScreen) welcomeScreen.remove();
+  }
+
+  function addMessageToUI(content, type) {
+    hideWelcomeScreen();
+    const chatContainer = document.getElementById('chatContainer');
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${type}`;
+    
+    const avatar = document.createElement('div');
+    avatar.className = `avatar ${type}`;
+    
+    if (type === 'user') {
+      if (userProfilePic) {
+        avatar.classList.add('has-image');
+        const img = document.createElement('img');
+        img.src = userProfilePic;
+        img.alt = 'User';
+        avatar.appendChild(img);
+      } else {
+        const initial = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
+        avatar.textContent = initial;
+      }
+    } else {
+      const img = document.createElement('img');
+      img.src = 'logo.png';
+      img.alt = 'AI';
+      avatar.appendChild(img);
+    }
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    
+    if (type === 'ai') {
+      messageContent.innerHTML = marked.parse(content);
+      
+      const speakerBtn = document.createElement('button');
+      speakerBtn.className = 'speaker-btn';
+      speakerBtn.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+      speakerBtn.onclick = () => speakText(content, speakerBtn);
+      messageContent.appendChild(speakerBtn);
+    } else {
+      messageContent.textContent = content;
+    }
+    
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(messageContent);
+    chatContainer.appendChild(wrapper);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function addSystemMessage(content) {
+    hideWelcomeScreen();
+    const chatContainer = document.getElementById('chatContainer');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'message-wrapper ai';
+    wrapper.style.opacity = '0.6';
+    
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar ai';
+    avatar.textContent = 'ℹ';
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.textContent = content;
+    
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(messageContent);
+    chatContainer.appendChild(wrapper);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function showTypingIndicator() {
+    hideWelcomeScreen();
+    const chatContainer = document.getElementById('chatContainer');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'message-wrapper ai';
+    wrapper.id = 'typingIndicator';
+    
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar ai';
     const img = document.createElement('img');
     img.src = 'logo.png';
     img.alt = 'AI';
     avatar.appendChild(img);
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'typing-indicator';
+    typingDiv.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+    
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(typingDiv);
+    chatContainer.appendChild(wrapper);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
   }
-  
-  const messageContent = document.createElement('div');
-  messageContent.className = 'message-content';
-  
-  if (type === 'ai') {
-    messageContent.innerHTML = marked.parse(content);
-  } else {
-    messageContent.textContent = content;
+
+  function hideTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) indicator.remove();
   }
-  
-  wrapper.appendChild(avatar);
-  wrapper.appendChild(messageContent);
-  chatContainer.appendChild(wrapper);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
 
-function addSystemMessage(content) {
-  hideWelcomeScreen();
-  const chatContainer = document.getElementById('chatContainer');
-  const wrapper = document.createElement('div');
-  wrapper.className = 'message-wrapper ai';
-  wrapper.style.opacity = '0.6';
-  
-  const avatar = document.createElement('div');
-  avatar.className = 'avatar ai';
-  avatar.textContent = 'ℹ';
-  
-  const messageContent = document.createElement('div');
-  messageContent.className = 'message-content';
-  messageContent.textContent = content;
-  
-  wrapper.appendChild(avatar);
-  wrapper.appendChild(messageContent);
-  chatContainer.appendChild(wrapper);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-function showTypingIndicator() {
-  hideWelcomeScreen();
-  const chatContainer = document.getElementById('chatContainer');
-  const wrapper = document.createElement('div');
-  wrapper.className = 'message-wrapper ai';
-  wrapper.id = 'typingIndicator';
-  
-  const avatar = document.createElement('div');
-  avatar.className = 'avatar ai';
-  const img = document.createElement('img');
-  img.src = 'logo.png';
-  img.alt = 'AI';
-  avatar.appendChild(img);
-  
-  const typingDiv = document.createElement('div');
-  typingDiv.className = 'typing-indicator';
-  typingDiv.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
-  
-  wrapper.appendChild(avatar);
-  wrapper.appendChild(typingDiv);
-  chatContainer.appendChild(wrapper);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-function hideTypingIndicator() {
-  const indicator = document.getElementById('typingIndicator');
-  if (indicator) indicator.remove();
-}
-
-window.sendMessage = async function() {
-  const input = document.getElementById('userInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const userMessage = input.value.trim();
-  
-  if (!userMessage) return;
-  
-  addMessageToUI(userMessage, 'user');
-  messages.push({ role: 'user', content: userMessage });
-  
-  input.value = '';
-  input.style.height = 'auto';
-  input.disabled = true;
-  sendBtn.disabled = true;
-  
-  showTypingIndicator();
-  
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: currentModel,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 1024
-      })
-    });
+  window.sendMessage = async function() {
+    const input = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const userMessage = input.value.trim();
     
-    if (!response.ok) throw new Error('API request failed');
+    if (!userMessage) return;
     
-    const data = await response.json();
-    const aiMessage = data.choices[0].message.content;
+    addMessageToUI(userMessage, 'user');
+    messages.push({ role: 'user', content: userMessage });
     
-    hideTypingIndicator();
-    addMessageToUI(aiMessage, 'ai');
-    messages.push({ role: 'assistant', content: aiMessage });
+    input.value = '';
+    input.style.height = 'auto';
+    input.disabled = true;
+    sendBtn.disabled = true;
     
-    await saveCurrentChat();
-  } catch (error) {
-    hideTypingIndicator();
-    addMessageToUI('Sorry, I encountered an error. Please try again.', 'ai');
-    console.error('Error:', error);
-  } finally {
-    input.disabled = false;
-    sendBtn.disabled = false;
-    input.focus();
-  }
-}
-
-async function generateRecommendations() {
-  if (isGeneratingRecommendations) return;
-  isGeneratingRecommendations = true;
-  
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{
-          role: 'user',
-          content: 'Generate 4 creative and diverse conversation starter suggestions for an AI chat interface. Each suggestion should have a short title (2-4 words), a brief description (4-6 words), and a specific example prompt. Format your response as JSON array with objects containing "title", "text", and "prompt" fields. Make them varied across different topics like coding, writing, learning, productivity, creativity, etc. Only respond with the JSON array, nothing else.'
-        }],
-        temperature: 0.9,
-        max_tokens: 500
-      })
-    });
-    
-    if (!response.ok) throw new Error('Failed to generate recommendations');
-    
-    const data = await response.json();
-    const content = data.choices[0].message.content;
+    showTypingIndicator();
     
     try {
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed) && parsed.length >= 4) {
-          aiRecommendations = parsed.slice(0, 4);
-          const welcomeScreen = document.querySelector('.welcome-screen');
-          if (welcomeScreen && messages.length === 0) {
-            const cards = document.querySelectorAll('.suggestion-card.generating');
-            cards.forEach((card, index) => {
+      const apiMessages = [SYSTEM_PROMPT, ...messages];
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: currentModel,
+          messages: apiMessages,
+          temperature: 0.7,
+          max_tokens: 1024
+        })
+      });
+      
+      if (!response.ok) throw new Error('API request failed');
+      
+      const data = await response.json();
+      const aiMessage = data.choices[0].message.content;
+      
+      hideTypingIndicator();
+      addMessageToUI(aiMessage, 'ai');
+      messages.push({ role: 'assistant', content: aiMessage });
+      
+      await saveCurrentChat();
+    } catch (error) {
+      hideTypingIndicator();
+      addMessageToUI('Sorry, I encountered an error. Please try again.', 'ai');
+      console.error('Error:', error);
+    } finally {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  async function generateRecommendations() {
+    if (isGeneratingRecommendations) return;
+    isGeneratingRecommendations = true;
+    
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{
+            role: 'user',
+            content: 'Generate 4 creative and diverse conversation starter suggestions for an AI chat interface. Each suggestion should have a short title (2-4 words), a brief description (4-6 words), and a specific example prompt. Format your response as JSON array with objects containing "title", "text", and "prompt" fields. Make them varied across different topics like coding, writing, learning, productivity, creativity, etc. Only respond with the JSON array, nothing else.'
+          }],
+          temperature: 0.9,
+          max_tokens: 500
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to generate recommendations');
+      
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      
+      try {
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed) && parsed.length >= 4) {
+            aiRecommendations = parsed.slice(0, 4);
+            const welcomeScreen = document.querySelector('.welcome-screen');
+            if (welcomeScreen && messages.length === 0) {
+              const cards = document.querySelectorAll('.suggestion-card.generating');
+              cards.forEach((card, index) => {
+                setTimeout(() => {
+                  card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                  card.style.opacity = '0';
+                  card.style.transform = 'scale(0.95)';
+                }, index * 50);
+              });
+              
               setTimeout(() => {
-                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.95)';
-              }, index * 50);
-            });
-            
-            setTimeout(() => {
-              newChat();
-            }, 300);
+                newChat();
+              }, 300);
+            }
           }
         }
+      } catch (parseError) {
+        console.error('Error parsing recommendations:', parseError);
       }
-    } catch (parseError) {
-      console.error('Error parsing recommendations:', parseError);
+    } catch (error) {
+      console.error('Error generating recommendations:', error);
+    } finally {
+      isGeneratingRecommendations = false;
     }
-  } catch (error) {
-    console.error('Error generating recommendations:', error);
-  } finally {
-    isGeneratingRecommendations = false;
   }
-}
 
-async function generateChatTitle() {
-  try {
-    const userMsg = messages.find(m => m.role === 'user')?.content || '';
-    const aiMsg = messages.find(m => m.role === 'assistant')?.content || '';
-    
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{
-          role: 'user',
-          content: `Generate a short, descriptive title (3-6 words max) for a chat conversation that started with:\nUser: "${userMsg.substring(0, 200)}"\nAssistant: "${aiMsg.substring(0, 200)}"\n\nOnly respond with the title, nothing else. No quotes or punctuation at the end.`
-        }],
-        temperature: 0.7,
-        max_tokens: 30
-      })
-    });
-    
-    if (!response.ok) throw new Error('Failed to generate title');
-    
-    const data = await response.json();
-    let title = data.choices[0].message.content.trim();
-    
-    title = title.replace(/^["']|["']$/g, '');
-    title = title.replace(/[.!?]$/, '');
-    title = title.substring(0, 50);
-    
-    return title || messages[0]?.content?.substring(0, 50) || 'New Chat';
-  } catch (error) {
-    console.error('Error generating chat title:', error);
-    return messages[0]?.content?.substring(0, 50) || 'New Chat';
+  async function generateChatTitle() {
+    try {
+      const userMsg = messages.find(m => m.role === 'user')?.content || '';
+      const aiMsg = messages.find(m => m.role === 'assistant')?.content || '';
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{
+            role: 'user',
+            content: `Generate a short, descriptive title (3-6 words max) for a chat conversation that started with:\nUser: "${userMsg.substring(0, 200)}"\nAssistant: "${aiMsg.substring(0, 200)}"\n\nOnly respond with the title, nothing else. No quotes or punctuation at the end.`
+          }],
+          temperature: 0.7,
+          max_tokens: 30
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to generate title');
+      
+      const data = await response.json();
+      let title = data.choices[0].message.content.trim();
+      
+      title = title.replace(/^["']|["']$/g, '');
+      title = title.replace(/[.!?]$/, '');
+      title = title.substring(0, 50);
+      
+      return title || messages[0]?.content?.substring(0, 50) || 'New Chat';
+    } catch (error) {
+      console.error('Error generating chat title:', error);
+      return messages[0]?.content?.substring(0, 50) || 'New Chat';
+    }
   }
-}
+});
 
-// Add this after the line: let userProfilePic = null;
-let recognition = null;
-let isListening = false;
-let currentAudio = null;
-
-
-// Toggle voice input
 window.toggleVoiceInput = function() {
   const voiceBtn = document.getElementById('voiceInputBtn');
   
@@ -801,9 +804,7 @@ function stopVoiceInput() {
   voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
 }
 
-// Text-to-speech function
 window.speakText = function(text, button) {
-  // Stop current audio if playing
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
@@ -813,24 +814,21 @@ window.speakText = function(text, button) {
     });
   }
 
-  // If clicking the same button that was playing, just stop
   if (button.classList.contains('playing')) {
     button.classList.remove('playing');
     button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
     return;
   }
 
-  // Clean text for TTS (remove markdown formatting)
   const cleanText = text
-    .replace(/#{1,6}\s/g, '') // Remove headers
-    .replace(/\*\*/g, '') // Remove bold
-    .replace(/\*/g, '') // Remove italic
-    .replace(/`{1,3}[^`]*`{1,3}/g, '') // Remove code blocks
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links, keep text
-    .replace(/^\s*[-*+]\s/gm, '') // Remove list markers
+    .replace(/#{1,6}\s/g, '')
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/`{1,3}[^`]*`{1,3}/g, '')
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/^\s*[-*+]\s/gm, '')
     .trim();
 
-  // Use browser's built-in speech synthesis
   if ('speechSynthesis' in window) {
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.0;
@@ -853,120 +851,10 @@ window.speakText = function(text, button) {
       currentAudio = null;
     };
 
-    window.speechSynthesis.cancel(); // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
     currentAudio = { pause: () => window.speechSynthesis.cancel() };
   } else {
     alert('Text-to-speech is not supported in your browser.');
   }
 };
-
-// Update the addMessageToUI function to include speaker button
-// Replace the existing addMessageToUI function with this:
-function addMessageToUI(content, type) {
-  hideWelcomeScreen();
-  const chatContainer = document.getElementById('chatContainer');
-  const wrapper = document.createElement('div');
-  wrapper.className = `message-wrapper ${type}`;
-  
-  const avatar = document.createElement('div');
-  avatar.className = `avatar ${type}`;
-  
-  if (type === 'user') {
-    if (userProfilePic) {
-      avatar.classList.add('has-image');
-      const img = document.createElement('img');
-      img.src = userProfilePic;
-      img.alt = 'User';
-      avatar.appendChild(img);
-    } else {
-      const initial = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
-      avatar.textContent = initial;
-    }
-  } else {
-    const img = document.createElement('img');
-    img.src = 'logo.png';
-    img.alt = 'AI';
-    avatar.appendChild(img);
-  }
-  
-  const messageContent = document.createElement('div');
-  messageContent.className = 'message-content';
-  
-  if (type === 'ai') {
-    messageContent.innerHTML = marked.parse(content);
-    
-    // Add speaker button for AI messages
-    const speakerBtn = document.createElement('button');
-    speakerBtn.className = 'speaker-btn';
-    speakerBtn.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-    speakerBtn.onclick = () => speakText(content, speakerBtn);
-    messageContent.appendChild(speakerBtn);
-  } else {
-    messageContent.textContent = content;
-  }
-  
-  wrapper.appendChild(avatar);
-  wrapper.appendChild(messageContent);
-  chatContainer.appendChild(wrapper);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-// Update the sendMessage function to include system prompt
-// Replace the existing sendMessage function with this:
-window.sendMessage = async function() {
-  const input = document.getElementById('userInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const userMessage = input.value.trim();
-  
-  if (!userMessage) return;
-  
-  addMessageToUI(userMessage, 'user');
-  messages.push({ role: 'user', content: userMessage });
-  
-  input.value = '';
-  input.style.height = 'auto';
-  input.disabled = true;
-  sendBtn.disabled = true;
-  
-  showTypingIndicator();
-  
-  try {
-    // Prepare messages with system prompt at the beginning
-    const apiMessages = [SYSTEM_PROMPT, ...messages];
-    
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: currentModel,
-        messages: apiMessages,
-        temperature: 0.7,
-        max_tokens: 1024
-      })
-    });
-    
-    if (!response.ok) throw new Error('API request failed');
-    
-    const data = await response.json();
-    const aiMessage = data.choices[0].message.content;
-    
-    hideTypingIndicator();
-    addMessageToUI(aiMessage, 'ai');
-    messages.push({ role: 'assistant', content: aiMessage });
-    
-    await saveCurrentChat();
-  } catch (error) {
-    hideTypingIndicator();
-    addMessageToUI('Sorry, I encountered an error. Please try again.', 'ai');
-    console.error('Error:', error);
-  } finally {
-    input.disabled = false;
-    sendBtn.disabled = false;
-    input.focus();
-  }
-}
-});
