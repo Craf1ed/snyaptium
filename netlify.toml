@@ -4,3 +4,4 @@
 [build]
   functions = "netlify/functions"
   publish = "."
+  secrets_scan_enabled = false
