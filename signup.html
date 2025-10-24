@@ -33,24 +33,46 @@ canvas {
   z-index: 0;
 }
 
+.grid-line {
+  position: absolute;
+  background: rgba(255,255,255,0.03);
+  z-index: 0;
+}
+
+.grid-line.vertical {
+  width: 1px;
+  height: 100%;
+  top: 0;
+}
+
+.grid-line.horizontal {
+  height: 1px;
+  width: 100%;
+  left: 0;
+}
+
 .auth-container {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 440px;
+  max-width: 900px;
   padding: 20px;
 }
 
 .auth-card {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 16px;
-  padding: 50px 40px;
+  border-radius: 24px;
+  padding: 60px 100px;
   backdrop-filter: blur(10px);
+  aspect-ratio: 16/9;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .logo {
-  font-size: 2.5em;
+  font-size: 3.5em;
   font-weight: 300;
   text-align: center;
   margin-bottom: 40px;
@@ -59,22 +81,22 @@ canvas {
 
 .auth-tabs {
   display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
+  gap: 12px;
+  margin-bottom: 35px;
   background: rgba(255,255,255,0.05);
-  border-radius: 10px;
-  padding: 5px;
+  border-radius: 14px;
+  padding: 7px;
 }
 
 .auth-tab {
   flex: 1;
-  padding: 12px;
+  padding: 16px;
   background: transparent;
   border: none;
   color: rgba(255,255,255,0.6);
   cursor: pointer;
-  border-radius: 8px;
-  font-size: 0.95em;
+  border-radius: 10px;
+  font-size: 1.05em;
   font-weight: 500;
   transition: all 0.3s ease;
 }
@@ -85,25 +107,25 @@ canvas {
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.9em;
+  font-size: 1em;
   color: rgba(255,255,255,0.8);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-weight: 500;
 }
 
 .form-group input {
   width: 100%;
-  padding: 14px 16px;
+  padding: 16px 20px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
+  border-radius: 12px;
   color: #ffffff;
-  font-size: 0.95em;
+  font-size: 1.05em;
   transition: all 0.3s ease;
 }
 
@@ -123,8 +145,8 @@ canvas {
   background: #ffffff;
   color: #000000;
   border: none;
-  border-radius: 8px;
-  font-size: 1em;
+  border-radius: 12px;
+  font-size: 1.05em;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -146,10 +168,10 @@ canvas {
   background: rgba(255,100,100,0.1);
   border: 1px solid rgba(255,100,100,0.3);
   color: #ff6b6b;
-  padding: 12px;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 10px;
   margin-bottom: 20px;
-  font-size: 0.9em;
+  font-size: 0.95em;
   display: none;
 }
 
@@ -181,8 +203,129 @@ canvas {
 .footer-text {
   text-align: center;
   margin-top: 30px;
-  font-size: 0.85em;
+  font-size: 0.9em;
   color: rgba(255,255,255,0.5);
+}
+
+.footer-text a {
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  transition: color 0.3s ease;
+  cursor: pointer;
+}
+
+.footer-text a:hover {
+  color: #ffffff;
+}
+
+.model-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.model-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.model-modal {
+  background: rgba(20,20,20,0.95);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 700px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.model-modal::-webkit-scrollbar { width: 6px; }
+.model-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+.model-overlay.active .model-modal {
+  transform: scale(1);
+}
+
+.model-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+}
+
+.model-modal-title {
+  font-size: 2em;
+  font-weight: 300;
+  margin-bottom: 10px;
+  letter-spacing: -1px;
+}
+
+.model-modal-subtitle {
+  color: rgba(255,255,255,0.6);
+  font-size: 0.95em;
+}
+
+.close-btn {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #ffffff;
+  font-size: 1.5em;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: rgba(255,255,255,0.2);
+  transform: rotate(90deg);
+}
+
+.modal-content h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+.modal-content h2:first-child {
+  margin-top: 0;
+}
+
+.modal-content p {
+  line-height: 1.7;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 15px;
+}
+
+.modal-content ul {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+.modal-content li {
+  line-height: 1.7;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 8px;
 }
 </style>
 </head>
@@ -236,30 +379,111 @@ canvas {
     </div>
     
     <div class="footer-text">
-      By continuing, you agree to Snyaptium's Terms & Privacy Policy
+      By continuing, you agree to Snyaptium's <a onclick="openModal('terms')">Terms of Service</a> & <a onclick="openModal('privacy')">Privacy Policy</a>
     </div>
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+<!-- Terms of Service Modal -->
+<div id="termsModal" class="model-overlay">
+  <div class="model-modal">
+    <div class="model-modal-header">
+      <div>
+        <div class="model-modal-title">Terms of Service</div>
+        <div class="model-modal-subtitle">Last updated: October 24, 2025</div>
+      </div>
+      <button class="close-btn" onclick="closeModal('terms')">×</button>
+    </div>
+    <div class="modal-content">
+      <h2>1. Acceptance of Terms</h2>
+      <p>By accessing and using Snyaptium, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these terms, please do not use our service.</p>
 
-// Fetch Firebase config from Netlify function
-const res = await fetch('/.netlify/functions/get-firebase');
-if (!res.ok) throw new Error('Failed to fetch Firebase config');
-const data = await res.json(); // { firebaseConfig: { ... } }
+      <h2>2. Use License</h2>
+      <p>Permission is granted to temporarily access Snyaptium for personal, non-commercial use only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
+      <ul>
+        <li>Modify or copy the materials</li>
+        <li>Use the materials for any commercial purpose</li>
+        <li>Attempt to decompile or reverse engineer any software</li>
+        <li>Remove any copyright or proprietary notations</li>
+      </ul>
 
-const app = initializeApp(data.firebaseConfig); // use data.firebaseConfig, not data
-const auth = getAuth(app);
-const db = getFirestore(app);
+      <h2>3. User Account</h2>
+      <p>You are responsible for maintaining the confidentiality of your account and password. You agree to accept responsibility for all activities that occur under your account.</p>
 
-// Redirect if already logged in
-auth.onAuthStateChanged((user) => {
-  if (user) window.location.href = 'chat.html';
-});
+      <h2>4. Prohibited Activities</h2>
+      <p>You agree not to engage in any of the following prohibited activities:</p>
+      <ul>
+        <li>Violating laws and regulations</li>
+        <li>Infringing on intellectual property rights</li>
+        <li>Transmitting malicious code or viruses</li>
+        <li>Harassing, hacking or threatening other users</li>
+      </ul>
 
+      <h2>5. Disclaimer</h2>
+      <p>The materials on Snyaptium are provided on an 'as is' basis. Snyaptium makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
+
+      <h2>6. Limitations</h2>
+      <p>In no event shall Snyaptium or its suppliers be liable for any damages arising out of the use or inability to use the materials on Snyaptium, even if Snyaptium or an authorized representative has been notified of the possibility of such damage.</p>
+
+      <h2>7. Contact Information</h2>
+      <p>If you have any questions about these Terms, please contact us at crafted@craftedgamz.com</p>
+    </div>
+  </div>
+</div>
+
+<!-- Privacy Policy Modal -->
+<div id="privacyModal" class="model-overlay">
+  <div class="model-modal">
+    <div class="model-modal-header">
+      <div>
+        <div class="model-modal-title">Privacy Policy</div>
+        <div class="model-modal-subtitle">Last updated: October 24, 2025</div>
+      </div>
+      <button class="close-btn" onclick="closeModal('privacy')">×</button>
+    </div>
+    <div class="modal-content">
+      <h2>1. Information We Collect</h2>
+      <p>We collect information that you provide directly to us, including:</p>
+      <ul>
+        <li>Name and email address when you create an account</li>
+        <li>Profile photo when customizing your profile</li>
+      </ul>
+
+      <h2>2. How We Use Your Information</h2>
+      <p>We do <strong>NOT</strong> use your information, and as well cannot access it.</p>
+
+      <h2>3. Information Sharing</h2>
+      <p>We do not share your personal information with third parties except:</p>
+      <ul>
+        <li>To comply with laws and regulations</li>
+        <li>To protect our rights and property</li>
+      </ul>
+
+      <h2>4. Data Security</h2>
+      <p>We take reasonable measures to help protect your personal information from loss, theft, misuse, unauthorized access, disclosure, alteration, and destruction. However, no security system is impenetrable.</p>
+
+      <h2>5. Your Rights</h2>
+      <p>You have the right to:</p>
+      <ul>
+        <li>Access your personal data</li>
+        <li>Correct inaccurate data</li>
+        <li>Request deletion of your data</li>
+      </ul>
+
+      <h2>6. Children's Privacy</h2>
+      <p>Our service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.</p>
+
+      <h2>7. Changes to Privacy Policy</h2>
+      <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.</p>
+
+      <h2>8. Contact Us</h2>
+      <p>If you have any questions about this Privacy Policy, please contact us at crafted@craftedgamz.com</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// Global functions for inline event handlers
 window.switchTab = function(tab) {
   const tabs = document.querySelectorAll('.auth-tab');
   const forms = document.querySelectorAll('.form-container');
@@ -285,6 +509,47 @@ function showError(message) {
 function hideError() {
   document.getElementById('errorMessage').classList.remove('show');
 }
+
+window.openModal = function(type) {
+  const modalId = type === 'terms' ? 'termsModal' : 'privacyModal';
+  document.getElementById(modalId).classList.add('active');
+}
+
+window.closeModal = function(type) {
+  const modalId = type === 'terms' ? 'termsModal' : 'privacyModal';
+  document.getElementById(modalId).classList.remove('active');
+}
+
+// Close modal on outside click
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.model-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('active');
+      }
+    });
+  });
+});
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+// Fetch Firebase config from Netlify function
+const res = await fetch('/.netlify/functions/get-firebase');
+if (!res.ok) throw new Error('Failed to fetch Firebase config');
+const data = await res.json();
+
+const app = initializeApp(data.firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Redirect if already logged in
+auth.onAuthStateChanged((user) => {
+  if (user) window.location.href = 'chat.html';
+});
 
 window.handleLogin = async function(e) {
   e.preventDefault();
@@ -342,6 +607,28 @@ window.handleSignup = async function(e) {
 </script>
 
 <script>
+// Create grid lines
+function createGridLines() {
+  const spacing = 100;
+  
+  for(let i = 0; i < window.innerWidth; i += spacing) {
+    const line = document.createElement('div');
+    line.className = 'grid-line vertical';
+    line.style.left = i + 'px';
+    document.body.appendChild(line);
+  }
+  
+  for(let i = 0; i < window.innerHeight; i += spacing) {
+    const line = document.createElement('div');
+    line.className = 'grid-line horizontal';
+    line.style.top = i + 'px';
+    document.body.appendChild(line);
+  }
+}
+
+createGridLines();
+
+// Particle animation
 const canvas = document.getElementById('bgCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
@@ -406,6 +693,10 @@ animate();
 window.addEventListener('resize', ()=>{
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  
+  // Recreate grid lines on resize
+  document.querySelectorAll('.grid-line').forEach(line => line.remove());
+  createGridLines();
 });
 </script>
 
