@@ -35,6 +35,128 @@ let chatHistory = [];
 let aiRecommendations = [];
 let isGeneratingRecommendations = false;
 let userProfilePic = null;
+let recognition = null;
+let isListening = false;
+let currentAudio = null;
+
+// System prompt for Snyaptium AI
+const SYSTEM_PROMPT = {
+  role: 'system',
+  content: 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.'
+};
+
+// Initialize speech recognition
+function initSpeechRecognition() {
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = function(event) {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById('userInput').value = transcript;
+      autoResize(document.getElementById('userInput'));
+    };
+
+    recognition.onerror = function(event) {
+      console.error('Speech recognition error:', event.error);
+      stopVoiceInput();
+    };
+
+    recognition.onend = function() {
+      stopVoiceInput();
+    };
+  }
+}
+
+// Toggle voice input
+window.toggleVoiceInput = function() {
+  const voiceBtn = document.getElementById('voiceInputBtn');
+  
+  if (!recognition) {
+    alert('Speech recognition is not supported in your browser.');
+    return;
+  }
+
+  if (isListening) {
+    recognition.stop();
+    stopVoiceInput();
+  } else {
+    recognition.start();
+    isListening = true;
+    voiceBtn.classList.add('listening');
+    voiceBtn.innerHTML = '<i class="fas fa-stop"></i>';
+  }
+};
+
+function stopVoiceInput() {
+  const voiceBtn = document.getElementById('voiceInputBtn');
+  isListening = false;
+  voiceBtn.classList.remove('listening');
+  voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+}
+
+// Text-to-speech function
+window.speakText = function(text, button) {
+  // Stop current audio if playing
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+    document.querySelectorAll('.speaker-btn.playing').forEach(btn => {
+      btn.classList.remove('playing');
+      btn.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+    });
+  }
+
+  // If clicking the same button that was playing, just stop
+  if (button.classList.contains('playing')) {
+    button.classList.remove('playing');
+    button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+    return;
+  }
+
+  // Clean text for TTS (remove markdown formatting)
+  const cleanText = text
+    .replace(/#{1,6}\s/g, '') // Remove headers
+    .replace(/\*\*/g, '') // Remove bold
+    .replace(/\*/g, '') // Remove italic
+    .replace(/`{1,3}[^`]*`{1,3}/g, '') // Remove code blocks
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links, keep text
+    .replace(/^\s*[-*+]\s/gm, '') // Remove list markers
+    .trim();
+
+  // Use browser's built-in speech synthesis
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    button.classList.add('playing');
+    button.innerHTML = '<i class="fas fa-stop"></i> Stop';
+
+    utterance.onend = function() {
+      button.classList.remove('playing');
+      button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+      currentAudio = null;
+    };
+
+    utterance.onerror = function(event) {
+      console.error('Speech synthesis error:', event);
+      button.classList.remove('playing');
+      button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+      currentAudio = null;
+    };
+
+    window.speechSynthesis.cancel(); // Cancel any ongoing speech
+    window.speechSynthesis.speak(utterance);
+    currentAudio = { pause: () => window.speechSynthesis.cancel() };
+  } else {
+    alert('Text-to-speech is not supported in your browser.');
+  }
+};
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
@@ -44,7 +166,10 @@ onAuthStateChanged(auth, async (user) => {
     
     // Load user profile data
     await loadUserProfile();
-      initSpeechRecognition();
+    
+    // Initialize speech recognition
+    initSpeechRecognition();
+    
     await loadChatHistory();
     
     // Initialize custom dropdown
@@ -57,6 +182,7 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     window.location.href = 'signup.html';
   }
+});
 
 async function loadUserProfile() {
   try {
@@ -150,16 +276,15 @@ document.getElementById('settingsSave').addEventListener('click', async function
     
     // Upload new profile picture if selected
     if (profilePicInput.files[0]) {
-  const file = profilePicInput.files[0];
-  const reader = new FileReader();
-  
-  profilePicURL = await new Promise((resolve, reject) => {
-    reader.onload = () => resolve(reader.result); // Base64 string
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
- else if (!document.getElementById('profilePicPreview').querySelector('img')) {
+      const file = profilePicInput.files[0];
+      const reader = new FileReader();
+      
+      profilePicURL = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result); // Base64 string
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    } else if (!document.getElementById('profilePicPreview').querySelector('img')) {
       // User removed the picture
       if (userProfilePic) {
         try {
@@ -549,6 +674,13 @@ function addMessageToUI(content, type) {
   
   if (type === 'ai') {
     messageContent.innerHTML = marked.parse(content);
+    
+    // Add speaker button for AI messages
+    const speakerBtn = document.createElement('button');
+    speakerBtn.className = 'speaker-btn';
+    speakerBtn.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+    speakerBtn.onclick = () => speakText(content, speakerBtn);
+    messageContent.appendChild(speakerBtn);
   } else {
     messageContent.textContent = content;
   }
@@ -627,6 +759,9 @@ window.sendMessage = async function() {
   showTypingIndicator();
   
   try {
+    // Prepare messages with system prompt at the beginning
+    const apiMessages = [SYSTEM_PROMPT, ...messages];
+    
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -635,7 +770,7 @@ window.sendMessage = async function() {
       },
       body: JSON.stringify({
         model: currentModel,
-        messages: messages,
+        messages: apiMessages,
         temperature: 0.7,
         max_tokens: 1024
       })
@@ -759,240 +894,3 @@ async function generateChatTitle() {
     return messages[0]?.content?.substring(0, 50) || 'New Chat';
   }
 }
-
-// Add this after the line: let userProfilePic = null;
-let recognition = null;
-let isListening = false;
-let currentAudio = null;
-
-// System prompt for Snyaptium AI
-const SYSTEM_PROMPT = {
-  role: 'system',
-  content: 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.'
-};
-
-// Initialize speech recognition
-function initSpeechRecognition() {
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
-
-    recognition.onresult = function(event) {
-      const transcript = event.results[0][0].transcript;
-      document.getElementById('userInput').value = transcript;
-      autoResize(document.getElementById('userInput'));
-    };
-
-    recognition.onerror = function(event) {
-      console.error('Speech recognition error:', event.error);
-      stopVoiceInput();
-    };
-
-    recognition.onend = function() {
-      stopVoiceInput();
-    };
-  }
-}
-
-// Toggle voice input
-window.toggleVoiceInput = function() {
-  const voiceBtn = document.getElementById('voiceInputBtn');
-  
-  if (!recognition) {
-    alert('Speech recognition is not supported in your browser.');
-    return;
-  }
-
-  if (isListening) {
-    recognition.stop();
-    stopVoiceInput();
-  } else {
-    recognition.start();
-    isListening = true;
-    voiceBtn.classList.add('listening');
-    voiceBtn.innerHTML = '<i class="fas fa-stop"></i>';
-  }
-};
-
-function stopVoiceInput() {
-  const voiceBtn = document.getElementById('voiceInputBtn');
-  isListening = false;
-  voiceBtn.classList.remove('listening');
-  voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-}
-
-// Text-to-speech function
-window.speakText = function(text, button) {
-  // Stop current audio if playing
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
-    document.querySelectorAll('.speaker-btn.playing').forEach(btn => {
-      btn.classList.remove('playing');
-      btn.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-    });
-  }
-
-  // If clicking the same button that was playing, just stop
-  if (button.classList.contains('playing')) {
-    button.classList.remove('playing');
-    button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-    return;
-  }
-
-  // Clean text for TTS (remove markdown formatting)
-  const cleanText = text
-    .replace(/#{1,6}\s/g, '') // Remove headers
-    .replace(/\*\*/g, '') // Remove bold
-    .replace(/\*/g, '') // Remove italic
-    .replace(/`{1,3}[^`]*`{1,3}/g, '') // Remove code blocks
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links, keep text
-    .replace(/^\s*[-*+]\s/gm, '') // Remove list markers
-    .trim();
-
-  // Use browser's built-in speech synthesis
-  if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-
-    button.classList.add('playing');
-    button.innerHTML = '<i class="fas fa-stop"></i> Stop';
-
-    utterance.onend = function() {
-      button.classList.remove('playing');
-      button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-      currentAudio = null;
-    };
-
-    utterance.onerror = function(event) {
-      console.error('Speech synthesis error:', event);
-      button.classList.remove('playing');
-      button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-      currentAudio = null;
-    };
-
-    window.speechSynthesis.cancel(); // Cancel any ongoing speech
-    window.speechSynthesis.speak(utterance);
-    currentAudio = { pause: () => window.speechSynthesis.cancel() };
-  } else {
-    alert('Text-to-speech is not supported in your browser.');
-  }
-};
-
-// Update the addMessageToUI function to include speaker button
-// Replace the existing addMessageToUI function with this:
-function addMessageToUI(content, type) {
-  hideWelcomeScreen();
-  const chatContainer = document.getElementById('chatContainer');
-  const wrapper = document.createElement('div');
-  wrapper.className = `message-wrapper ${type}`;
-  
-  const avatar = document.createElement('div');
-  avatar.className = `avatar ${type}`;
-  
-  if (type === 'user') {
-    if (userProfilePic) {
-      avatar.classList.add('has-image');
-      const img = document.createElement('img');
-      img.src = userProfilePic;
-      img.alt = 'User';
-      avatar.appendChild(img);
-    } else {
-      const initial = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
-      avatar.textContent = initial;
-    }
-  } else {
-    const img = document.createElement('img');
-    img.src = 'logo.png';
-    img.alt = 'AI';
-    avatar.appendChild(img);
-  }
-  
-  const messageContent = document.createElement('div');
-  messageContent.className = 'message-content';
-  
-  if (type === 'ai') {
-    messageContent.innerHTML = marked.parse(content);
-    
-    // Add speaker button for AI messages
-    const speakerBtn = document.createElement('button');
-    speakerBtn.className = 'speaker-btn';
-    speakerBtn.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-    speakerBtn.onclick = () => speakText(content, speakerBtn);
-    messageContent.appendChild(speakerBtn);
-  } else {
-    messageContent.textContent = content;
-  }
-  
-  wrapper.appendChild(avatar);
-  wrapper.appendChild(messageContent);
-  chatContainer.appendChild(wrapper);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-// Update the sendMessage function to include system prompt
-// Replace the existing sendMessage function with this:
-window.sendMessage = async function() {
-  const input = document.getElementById('userInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const userMessage = input.value.trim();
-  
-  if (!userMessage) return;
-  
-  addMessageToUI(userMessage, 'user');
-  messages.push({ role: 'user', content: userMessage });
-  
-  input.value = '';
-  input.style.height = 'auto';
-  input.disabled = true;
-  sendBtn.disabled = true;
-  
-  showTypingIndicator();
-  
-  try {
-    // Prepare messages with system prompt at the beginning
-    const apiMessages = [SYSTEM_PROMPT, ...messages];
-    
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: currentModel,
-        messages: apiMessages,
-        temperature: 0.7,
-        max_tokens: 1024
-      })
-    });
-    
-    if (!response.ok) throw new Error('API request failed');
-    
-    const data = await response.json();
-    const aiMessage = data.choices[0].message.content;
-    
-    hideTypingIndicator();
-    addMessageToUI(aiMessage, 'ai');
-    messages.push({ role: 'assistant', content: aiMessage });
-    
-    await saveCurrentChat();
-  } catch (error) {
-    hideTypingIndicator();
-    addMessageToUI('Sorry, I encountered an error. Please try again.', 'ai');
-    console.error('Error:', error);
-  } finally {
-    input.disabled = false;
-    sendBtn.disabled = false;
-    input.focus();
-  }
-}
-
-// Initialize speech recognition when the page loads
-// Add this to the onAuthStateChanged callback after loadUserProfile()
-// It should look like this in the existing code:
