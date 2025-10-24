@@ -992,6 +992,4 @@ window.sendMessage = async function() {
     input.focus();
   }
 }
-
-// Initialize speech recognition when the page loads
-// Add this to the onAuthStateChanged callback after l
+});
