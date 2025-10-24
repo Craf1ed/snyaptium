@@ -35,6 +35,14 @@ let chatHistory = [];
 let aiRecommendations = [];
 let isGeneratingRecommendations = false;
 let userProfilePic = null;
+let recognition = null;
+let isListening = false;
+let currentAudio = null;
+
+const SYSTEM_PROMPT = {
+  role: 'system',
+  content: 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.'
+};
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
