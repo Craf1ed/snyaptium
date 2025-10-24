@@ -773,37 +773,6 @@ let recognition = null;
 let isListening = false;
 let currentAudio = null;
 
-// System prompt for Snyaptium AI
-const SYSTEM_PROMPT = {
-  role: 'system',
-  content: 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.'
-};
-
-// Initialize speech recognition
-function initSpeechRecognition() {
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
-
-    recognition.onresult = function(event) {
-      const transcript = event.results[0][0].transcript;
-      document.getElementById('userInput').value = transcript;
-      autoResize(document.getElementById('userInput'));
-    };
-
-    recognition.onerror = function(event) {
-      console.error('Speech recognition error:', event.error);
-      stopVoiceInput();
-    };
-
-    recognition.onend = function() {
-      stopVoiceInput();
-    };
-  }
-}
 
 // Toggle voice input
 window.toggleVoiceInput = function() {
