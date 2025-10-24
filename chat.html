@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snyaptium Chat</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<link rel="stylesheet" href="chat/main.css">
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div id="loadingScreen" class="loading-screen">Loading...</div>
+
+<div class="model-overlay" id="modelOverlay">
+  <div class="model-modal">
+    <div class="model-modal-title">Select Model</div>
+    <div class="model-modal-subtitle">Choose the AI model for your conversation</div>
+    <div class="model-option selected" data-value="llama-3.3-70b-versatile">
+      <div class="model-option-name">LLaMA 3.3 70B Versatile</div>
+      <div class="model-option-desc">Most capable, best for complex tasks</div>
+    </div>
+    <div class="model-option" data-value="llama-3.1-8b-instant">
+      <div class="model-option-name">LLaMA 3.1 8B Instant</div>
+      <div class="model-option-desc">Fast and efficient for quick responses</div>
+    </div>
+    <div class="model-option" data-value="compound-beta">
+      <div class="model-option-name">Groq Compound Beta</div>
+      <div class="model-option-desc">Experimental advanced reasoning model</div>
+    </div>
+    <div class="model-option" data-value="openai/gpt-oss-120b">
+      <div class="model-option-name">GPT OSS 120B</div>
+      <div class="model-option-desc">Powerful open-source GPT model</div>
+    </div>
+    <div class="model-option" data-value="openai/gpt-oss-20b">
+      <div class="model-option-name">GPT OSS 20B</div>
+      <div class="model-option-desc">Lighter GPT with faster responses</div>
+    </div>
+  </div>
+</div>
+
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-modal">
+    <div class="settings-modal-title">User Settings</div>
+    
+    <div class="profile-pic-section">
+      <div class="profile-pic-preview" id="profilePicPreview">
+        <span id="profilePicInitial">U</span>
+      </div>
+      <div class="profile-pic-actions">
+        <label for="profilePicInput" class="file-input-label">
+          <i class="fas fa-upload"></i> Upload Picture
+        </label>
+        <input type="file" id="profilePicInput" accept="image/*">
+        <br>
+        <button class="remove-pic-btn" id="removePicBtn">
+          <i class="fas fa-times"></i> Remove Picture
+        </button>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <label class="settings-label">Display Name</label>
+      <input type="text" id="settingsName" class="settings-input" placeholder="Enter your name">
+    </div>
+    
+    <div class="settings-section">
+      <label class="settings-label">New Password</label>
+      <input type="password" id="settingsPassword" class="settings-input" placeholder="Leave blank to keep current">
+    </div>
+    
+    <div class="settings-section">
+      <label class="settings-label">Confirm Password</label>
+      <input type="password" id="settingsPasswordConfirm" class="settings-input" placeholder="Confirm new password">
+    </div>
+    
+    <div class="settings-buttons">
+      <button class="settings-btn-cancel" id="settingsCancel">Cancel</button>
+      <button class="settings-btn-save" id="settingsSave">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-modal">
+    <div class="confirm-icon">
+      <i class="fas fa-trash-alt"></i>
+    </div>
+    <div class="confirm-title">Delete Chat?</div>
+    <div class="confirm-message">This action cannot be undone. Your chat history will be permanently deleted.</div>
+    <div class="confirm-buttons">
+      <button class="confirm-btn confirm-btn-cancel" id="confirmCancel">
+        <i class="fas fa-times"></i> Cancel
+      </button>
+      <button class="confirm-btn confirm-btn-delete" id="confirmDelete">
+        <i class="fas fa-trash"></i> Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="mainApp" style="display: none; width: 100%; display: flex;">
+  <div class="sidebar">
+    <div class="logo">Snyaptium</div>
+    <div class="user-info">
+      <div class="user-name" id="userName">Loading...</div>
+      <div class="user-actions">
+        <button class="settings-btn" onclick="openSettings()">
+          <i class="fas fa-cog"></i>
+        </button>
+        <button class="logout-btn" onclick="handleLogout()">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+    </div>
+    <button class="new-chat-btn" onclick="newChat()">
+      <i class="fas fa-plus"></i> New Chat
+    </button>
+    <div class="chat-history">
+      <div class="chat-history-title">Recent Chats</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+  <div class="main-content">
+    <div class="chat-container" id="chatContainer">
+      <div class="welcome-screen">
+        <div class="welcome-title" id="welcomeTitle">Welcome to Snyaptium</div>
+        <div class="welcome-subtitle">Your intelligent AI companion ready to assist with any task.</div>
+        <div class="suggestion-cards">
+          <div class="suggestion-card generating">
+            <div class="suggestion-card-title">Generating...</div>
+            <div class="suggestion-card-text">AI is creating suggestions</div>
+          </div>
+          <div class="suggestion-card generating">
+            <div class="suggestion-card-title">Generating...</div>
+            <div class="suggestion-card-text">AI is creating suggestions</div>
+          </div>
+          <div class="suggestion-card generating">
+            <div class="suggestion-card-title">Generating...</div>
+            <div class="suggestion-card-text">AI is creating suggestions</div>
+          </div>
+          <div class="suggestion-card generating">
+            <div class="suggestion-card-title">Generating...</div>
+            <div class="suggestion-card-text">AI is creating suggestions</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="model-selector-input">
+        <div class="custom-select" id="customSelect">
+          <span id="selectedModel">LLaMA 3.3 70B Versatile</span>
+        </div>
+      </div>
+      <div class="input-wrapper">
+        <textarea id="userInput" class="input-field" placeholder="Type your message..." rows="1" onkeydown="handleKeyPress(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="chat/particles.js"></script>
+<script type="module" src="chat/main.js"></script>
+
+</body>
+</html>
