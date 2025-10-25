@@ -624,13 +624,33 @@ onAuthStateChanged(auth, async (user) => {
     if (indicator) indicator.remove();
   }
 
-  window.sendMessage = async function() {
-    const input = document.getElementById('userInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const userMessage = input.value.trim();
-    
-    if (!userMessage) return;
-    
+  // REPLACE your existing window.sendMessage function with this:
+
+window.sendMessage = async function() {
+  const input = document.getElementById('userInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const userMessage = input.value.trim();
+  
+  if (!userMessage) return;
+  
+  // Check if imagegen module is loaded
+  if (typeof window.sendMessageWithImageGen === 'function') {
+    console.log('🚀 Using image-gen enabled sendMessage');
+    await window.sendMessageWithImageGen(
+      API_KEY,
+      API_URL,
+      currentUser,
+      messages,
+      currentModel,
+      SYSTEM_PROMPT,
+      saveCurrentChat,
+      addMessageToUI,
+      hideTypingIndicator,
+      showTypingIndicator
+    );
+  } else {
+    console.warn('⚠️ Image gen module not loaded, using fallback');
+    // Fallback to original implementation
     addMessageToUI(userMessage, 'user');
     messages.push({ role: 'user', content: userMessage });
     
@@ -678,6 +698,7 @@ onAuthStateChanged(auth, async (user) => {
       input.focus();
     }
   }
+};
 
   async function generateRecommendations() {
     if (isGeneratingRecommendations) return;
