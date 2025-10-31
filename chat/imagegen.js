@@ -1,5 +1,5 @@
 // Image Generation Module for Snyaptium Chat
-// This module integrates image generation capabilities with AI-powered intent detection
+// This module integrates image generation capabilities with a toggle button
 
 const IMAGE_GEN_CONFIG = {
   ENDPOINT: 'https://snyaptium-img.craftedgamz.workers.dev/',
@@ -10,105 +10,7 @@ const IMAGE_GEN_CONFIG = {
 
 let imageGenCooldown = 0;
 let cooldownInterval = null;
-
-// AI-powered intent detection
-async function detectImageGenIntent(userMessage, API_KEY, API_URL) {
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{
-          role: 'system',
-          content: `You are an intent classifier. Your ONLY job is to detect if the user wants to CREATE/GENERATE a visual image.
-
-RESPOND WITH ONLY ONE WORD - Either "IMAGE" or "CHAT"
-
-IMAGE examples:
-- "generate an image of X"
-- "create a picture of X"
-- "make me an image of X"
-- "draw X"
-- "show me a photo of X"
-- "can you make an image of X"
-- "I want a picture of X"
-
-CHAT examples:
-- "how do I make X" (asking for instructions)
-- "explain X to me"
-- "what is X"
-- "help me with X"
-- "write a story about X"
-- "tell me about X"
-
-The key difference: IMAGE = wants a visual/picture. CHAT = wants text/conversation.
-
-Respond with ONLY "IMAGE" or "CHAT" - no punctuation, no explanation.`
-        }, {
-          role: 'user',
-          content: userMessage
-        }],
-        temperature: 0.1,
-        max_tokens: 5
-      })
-    });
-
-    if (!response.ok) throw new Error('Intent detection failed');
-
-    const data = await response.json();
-    const intent = data.choices[0].message.content.trim().toUpperCase();
-    
-    console.log('🔍 Intent Detection:', userMessage, '→', intent);
-    
-    return intent.includes('IMAGE');
-  } catch (error) {
-    console.error('Intent detection error:', error);
-    // Fallback to keyword detection
-    return detectImageGenIntentFallback(userMessage);
-  }
-}
-
-// Fallback keyword-based detection with better pattern matching
-function detectImageGenIntentFallback(userMessage) {
-  const lowerMessage = userMessage.toLowerCase();
-  
-  // Strong image indicators - these are very likely image requests
-  const strongImagePatterns = [
-    /\b(generate|create|make|draw|design|render|paint|sketch|illustrate)\s+(an?|me|the)?\s*(image|picture|photo|illustration|artwork|visual|graphic)/i,
-    /\b(show|give)\s+me\s+(an?|the)?\s*(image|picture|photo)/i,
-    /\bimage\s+of\b/i,
-    /\bpicture\s+of\b/i,
-    /\bphoto\s+of\b/i,
-    /\bcan\s+you\s+(make|create|generate|draw)\s+(me\s+)?(an?|the)?\s*(image|picture)/i
-  ];
-  
-  // Check strong patterns first
-  for (const pattern of strongImagePatterns) {
-    if (pattern.test(lowerMessage)) {
-      console.log('🔍 Fallback Detection (STRONG):', userMessage, '→ IMAGE');
-      return true;
-    }
-  }
-  
-  // Weak indicators - only if they appear with visual descriptors
-  const visualDescriptors = ['of a', 'of an', 'with', 'showing', 'depicting'];
-  const weakImageKeywords = ['generate', 'create', 'make', 'draw', 'visualize'];
-  
-  const hasWeakKeyword = weakImageKeywords.some(keyword => lowerMessage.includes(keyword));
-  const hasVisualDescriptor = visualDescriptors.some(desc => lowerMessage.includes(desc));
-  
-  if (hasWeakKeyword && hasVisualDescriptor) {
-    console.log('🔍 Fallback Detection (WEAK):', userMessage, '→ IMAGE');
-    return true;
-  }
-  
-  console.log('🔍 Fallback Detection:', userMessage, '→ CHAT');
-  return false;
-}
+let isImageModeActive = false;
 
 // Extract or generate image prompt from user message
 async function extractImagePrompt(userMessage, API_KEY, API_URL) {
@@ -139,7 +41,6 @@ async function extractImagePrompt(userMessage, API_KEY, API_URL) {
     return data.choices[0].message.content.trim();
   } catch (error) {
     console.error('Prompt extraction error:', error);
-    // Fallback: use original message with basic cleanup
     return userMessage.replace(/^(generate|create|make|draw|show me|picture of|image of|photo of)\s+/i, '').trim();
   }
 }
@@ -285,7 +186,8 @@ function createGeneratedImageElement(imageUrl, prompt) {
   regenerateBtn.className = 'image-action-btn';
   regenerateBtn.innerHTML = '<i class="fas fa-redo"></i> Regenerate';
   regenerateBtn.onclick = () => {
-    document.getElementById('userInput').value = `Generate an image: ${prompt}`;
+    window.toggleImageMode(true);
+    document.getElementById('userInput').value = prompt;
     window.sendMessage();
   };
 
@@ -306,6 +208,29 @@ function downloadImage(url, filename) {
   document.body.removeChild(a);
 }
 
+// Toggle image generation mode
+window.toggleImageMode = function(forceState = null) {
+  const imageBtn = document.getElementById('imageGenBtn');
+  
+  if (forceState !== null) {
+    isImageModeActive = forceState;
+  } else {
+    isImageModeActive = !isImageModeActive;
+  }
+  
+  if (isImageModeActive) {
+    imageBtn.classList.add('active');
+    imageBtn.innerHTML = '<i class="fas fa-image"></i>';
+    document.getElementById('userInput').placeholder = 'Describe the image you want to generate...';
+  } else {
+    imageBtn.classList.remove('active');
+    imageBtn.innerHTML = '<i class="far fa-image"></i>';
+    document.getElementById('userInput').placeholder = 'Lets talk about...';
+  }
+  
+  console.log('🎨 Image mode:', isImageModeActive ? 'ON' : 'OFF');
+};
+
 // Enhanced message sending with image generation support
 window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, messages, currentModel, SYSTEM_PROMPT, saveCurrentChatFn, addMessageToUIFn, hideTypingIndicatorFn, showTypingIndicatorFn) {
   const input = document.getElementById('userInput');
@@ -325,11 +250,9 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
   showTypingIndicatorFn();
   
   try {
-    // Step 1: Detect intent (IMAGE or CHAT)
-    const isImageGen = await detectImageGenIntent(userMessage, API_KEY, API_URL);
-    
-    if (isImageGen) {
-      // Handle image generation
+    if (isImageModeActive) {
+      window.toggleImageMode(false);
+      
       hideTypingIndicatorFn();
       
       const chatContainer = document.getElementById('chatContainer');
@@ -357,20 +280,17 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
       chatContainer.appendChild(wrapper);
       chatContainer.scrollTop = chatContainer.scrollHeight;
       
-      // Step 2: Extract/optimize prompt
       status.innerHTML = '<i class="fas fa-magic"></i> <span>Optimizing image prompt...</span>';
       const progressBar = progress.querySelector('.image-gen-progress-bar');
       progressBar.style.width = '30%';
       
       const optimizedPrompt = await extractImagePrompt(userMessage, API_KEY, API_URL);
       
-      // Step 3: Generate image
       status.innerHTML = '<i class="fas fa-magic"></i> <span>Generating your image...</span>';
       progressBar.style.width = '60%';
       
       const imageUrl = await generateImage(optimizedPrompt);
       
-      // Step 4: Display image
       progressBar.style.width = '100%';
       
       setTimeout(() => {
@@ -380,10 +300,8 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
         
         chatContainer.scrollTop = chatContainer.scrollHeight;
         
-        // Start cooldown
         startCooldown();
         
-        // Add cooldown indicator
         if (imageGenCooldown > 0) {
           const cooldownDiv = document.createElement('div');
           cooldownDiv.className = 'image-cooldown';
@@ -401,7 +319,6 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
         }
       }, 500);
       
-      // Add to messages as image
       messages.push({ 
         role: 'assistant', 
         content: `[Generated Image: ${optimizedPrompt}]`,
@@ -413,7 +330,6 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
       await saveCurrentChatFn();
       
     } else {
-      // Handle normal chat response
       const apiMessages = [SYSTEM_PROMPT, ...messages];
       
       const response = await fetch(API_URL, {
@@ -487,7 +403,6 @@ window.loadChatWithImages = function(chat, addMessageToUIFn) {
       addMessageToUIFn(msg.content, 'user');
     } else if (msg.role === 'assistant') {
       if (msg.type === 'image' && msg.imageUrl && msg.prompt) {
-        // Recreate image message
         const wrapper = document.createElement('div');
         wrapper.className = 'message-wrapper ai';
         
@@ -518,7 +433,6 @@ window.loadChatWithImages = function(chat, addMessageToUIFn) {
 
 // Export functions for integration
 window.ImageGenModule = {
-  detectImageGenIntent,
   extractImagePrompt,
   generateImage,
   checkSafety,

@@ -73,14 +73,12 @@ function initSpeechRecognition() {
   }
 }
 
-// Initialize mobile UI components
 function initMobileUI() {
   const isMobile = window.innerWidth <= 768;
   
   if (isMobile) {
     console.log('📱 Initializing mobile UI...');
     
-    // Check if mobile header already exists
     if (!document.querySelector('.mobile-header')) {
       const mainContent = document.querySelector('.main-content');
       
@@ -101,7 +99,6 @@ function initMobileUI() {
         console.log('✅ Mobile header created');
       }
       
-      // Add mobile overlay for sidebar
       if (!document.querySelector('.mobile-sidebar-overlay')) {
         const overlay = document.createElement('div');
         overlay.className = 'mobile-sidebar-overlay';
@@ -113,7 +110,6 @@ function initMobileUI() {
   }
 }
 
-// Toggle mobile sidebar
 window.toggleMobileSidebar = function() {
   const sidebar = document.querySelector('.sidebar');
   const overlay = document.querySelector('.mobile-sidebar-overlay');
@@ -131,7 +127,6 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     
     try {
-      // Hide loading screen
       const loadingScreen = document.getElementById('loadingScreen');
       const mainApp = document.getElementById('mainApp');
       
@@ -148,7 +143,6 @@ onAuthStateChanged(auth, async (user) => {
       initCustomDropdown();
       initMobileUI();
       
-      // Show main app
       if (loadingScreen) {
         loadingScreen.style.display = 'none';
       }
@@ -158,7 +152,6 @@ onAuthStateChanged(auth, async (user) => {
         console.log('✅ Main app displayed');
       }
       
-      // Generate recommendations after a short delay
       setTimeout(() => {
         console.log('💡 Generating recommendations...');
         generateRecommendations();
@@ -455,15 +448,19 @@ window.loadChat = async function(chatId) {
       }
     });
     
-    const chatContainer = document.getElementById('chatContainer');
-    chatContainer.innerHTML = '';
-    messages.forEach(msg => {
-      if (msg.role === 'user') {
-        addMessageToUI(msg.content, 'user');
-      } else if (msg.role === 'assistant') {
-        addMessageToUI(msg.content, 'ai');
-      }
-    });
+    if (typeof window.loadChatWithImages === 'function') {
+      window.loadChatWithImages(chat, addMessageToUI);
+    } else {
+      const chatContainer = document.getElementById('chatContainer');
+      chatContainer.innerHTML = '';
+      messages.forEach(msg => {
+        if (msg.role === 'user') {
+          addMessageToUI(msg.content, 'user');
+        } else if (msg.role === 'assistant') {
+          addMessageToUI(msg.content, 'ai');
+        }
+      });
+    }
     updateHistoryList();
   }
 }
@@ -554,7 +551,6 @@ window.newChat = async function() {
   }
   updateHistoryList();
   
-  // Close mobile sidebar if open
   if (window.innerWidth <= 768) {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.mobile-sidebar-overlay');
@@ -683,7 +679,7 @@ function addSystemMessage(content) {
   
   const avatar = document.createElement('div');
   avatar.className = 'avatar ai';
-  avatar.textContent = 'ℹ';
+  avatar.innerHTML = '<i class="fas fa-info-circle"></i>';
   
   const messageContent = document.createElement('div');
   messageContent.className = 'message-content';
@@ -975,7 +971,6 @@ window.speakText = function(text, button) {
   }
 };
 
-// Handle window resize for mobile/desktop switching
 window.addEventListener('resize', () => {
   const isMobile = window.innerWidth <= 768;
   if (isMobile && !document.querySelector('.mobile-header')) {
