@@ -670,6 +670,21 @@ function addMessageToUI(content, type) {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
+// Enhanced addMessageToUI to support artifacts
+const originalAddMessageToUI = addMessageToUI;
+function addMessageToUI(content, type) {
+  originalAddMessageToUI(content, type);
+  
+  // After rendering, enhance code blocks
+  if (type === 'ai') {
+    setTimeout(() => {
+      if (typeof window.enhanceCodeBlocks === 'function') {
+        window.enhanceCodeBlocks();
+      }
+    }, 100);
+  }
+}
+
 function addSystemMessage(content) {
   hideWelcomeScreen();
   const chatContainer = document.getElementById('chatContainer');
@@ -977,5 +992,151 @@ window.addEventListener('resize', () => {
     initMobileUI();
   }
 });
+
+// Delete all chats
+document.getElementById('deleteAllChatsBtn').addEventListener('click', async function() {
+  const result = await showDangerConfirm(
+    'Delete All Chats?',
+    'This will permanently delete all your chat history. This action cannot be undone.',
+    'Delete All Chats'
+  );
+  
+  if (result) {
+    try {
+      const q = query(
+        collection(db, 'chats'),
+        where('userId', '==', currentUser.uid)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const deletePromises = [];
+      querySnapshot.forEach((doc) => {
+        deletePromises.push(deleteDoc(doc.ref));
+      });
+      
+      await Promise.all(deletePromises);
+      
+      // Clear local state
+      chatHistory = [];
+      currentChatId = null;
+      messages = [];
+      
+      updateHistoryList();
+      newChat();
+      
+      alert(`Successfully deleted ${deletePromises.length} chats.`);
+      document.getElementById('settingsOverlay').classList.remove('active');
+    } catch (error) {
+      console.error('Error deleting chats:', error);
+      alert('Error deleting chats: ' + error.message);
+    }
+  }
+});
+
+// Delete account
+document.getElementById('deleteAccountBtn').addEventListener('click', async function() {
+  const result = await showDangerConfirm(
+    'Delete Account?',
+    'This will permanently delete your account, all chats, and all data. This action cannot be undone. You will be logged out immediately.',
+    'Delete My Account'
+  );
+  
+  if (result) {
+    try {
+      // Delete all user chats
+      const chatsQuery = query(
+        collection(db, 'chats'),
+        where('userId', '==', currentUser.uid)
+      );
+      const chatsSnapshot = await getDocs(chatsQuery);
+      const deleteChatsPromises = [];
+      chatsSnapshot.forEach((doc) => {
+        deleteChatsPromises.push(deleteDoc(doc.ref));
+      });
+      await Promise.all(deleteChatsPromises);
+      
+      // Delete user document
+      await deleteDoc(doc(db, 'users', currentUser.uid));
+      
+      // Delete profile picture if exists
+      if (userProfilePic) {
+        try {
+          const storageRef = ref(storage, `profilePics/${currentUser.uid}`);
+          await deleteObject(storageRef);
+        } catch (error) {
+          console.log('No profile pic to delete or error:', error);
+        }
+      }
+      
+      // Delete Firebase Auth account
+      await currentUser.delete();
+      
+      // Redirect to signup
+      window.location.href = 'signup.html';
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert('Error deleting account: ' + error.message);
+    }
+  }
+});
+
+// Danger confirm dialog
+async function showDangerConfirm(title, message, confirmText) {
+  return new Promise((resolve) => {
+    const confirmOverlay = document.getElementById('confirmOverlay');
+    const confirmTitle = document.querySelector('.confirm-title');
+    const confirmMessage = document.querySelector('.confirm-message');
+    const confirmDelete = document.getElementById('confirmDelete');
+    const confirmCancel = document.getElementById('confirmCancel');
+    
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    confirmDelete.innerHTML = `<i class="fas fa-trash"></i> ${confirmText}`;
+    
+    confirmOverlay.classList.add('active');
+    
+    const deleteHandler = () => {
+      cleanup();
+      resolve(true);
+    };
+    
+    const cancelHandler = () => {
+      cleanup();
+      resolve(false);
+    };
+    
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        cleanup();
+        resolve(false);
+      }
+    };
+    
+    const overlayHandler = (e) => {
+      if (e.target === confirmOverlay) {
+        cleanup();
+        resolve(false);
+      }
+    };
+    
+    const cleanup = () => {
+      confirmDelete.removeEventListener('click', deleteHandler);
+      confirmCancel.removeEventListener('click', cancelHandler);
+      document.removeEventListener('keydown', escapeHandler);
+      confirmOverlay.removeEventListener('click', overlayHandler);
+      confirmOverlay.classList.remove('active');
+      
+      // Reset to default
+      confirmTitle.textContent = 'Delete Chat?';
+      confirmMessage.textContent = 'This action cannot be undone. Your chat history will be permanently deleted.';
+      confirmDelete.innerHTML = '<i class="fas fa-trash"></i> Delete';
+    };
+    
+    confirmDelete.addEventListener('click', deleteHandler);
+    confirmCancel.addEventListener('click', cancelHandler);
+    document.addEventListener('keydown', escapeHandler);
+    confirmOverlay.addEventListener('click', overlayHandler);
+  });
+}
 
 console.log('✅ Main.js loaded successfully');

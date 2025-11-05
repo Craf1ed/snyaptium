@@ -1237,3 +1237,364 @@ canvas#bgCanvas {
     max-height: 85vh;
   }
 }
+
+/* NEW: Settings Divider */
+.settings-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 30px 0;
+}
+
+/* NEW: Danger Zone Styles */
+.danger-zone {
+  background: rgba(255,68,68,0.05);
+  border: 1px solid rgba(255,68,68,0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.danger-zone-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #ff6b6b;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.danger-zone-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid rgba(255,68,68,0.1);
+  gap: 15px;
+}
+
+.danger-zone-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.danger-zone-item-info {
+  flex: 1;
+}
+
+.danger-zone-item-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #ffffff;
+}
+
+.danger-zone-item-desc {
+  font-size: 0.85em;
+  color: rgba(255,255,255,0.6);
+}
+
+.danger-btn {
+  background: rgba(255,68,68,0.1);
+  border: 1px solid rgba(255,68,68,0.3);
+  color: #ff6b6b;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+}
+
+.danger-btn:hover {
+  background: rgba(255,68,68,0.2);
+  border-color: rgba(255,68,68,0.5);
+  transform: translateY(-2px);
+}
+
+.danger-btn-critical {
+  background: rgba(255,0,0,0.15);
+  border-color: rgba(255,0,0,0.4);
+  color: #ff4444;
+}
+
+.danger-btn-critical:hover {
+  background: rgba(255,0,0,0.25);
+  border-color: rgba(255,0,0,0.6);
+}
+
+/* NEW: Code Artifact Overlay */
+.artifact-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.9);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1004;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.artifact-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.artifact-modal {
+  background: rgba(15,15,15,0.98);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  width: 95%;
+  max-width: 1200px;
+  height: 90vh;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+  overflow: hidden;
+}
+
+.artifact-overlay.active .artifact-modal {
+  transform: scale(1);
+}
+
+.artifact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.3);
+}
+
+.artifact-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.artifact-title i {
+  color: rgba(255,255,255,0.7);
+}
+
+.artifact-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.artifact-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.8);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1em;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artifact-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.25);
+  transform: translateY(-2px);
+}
+
+.artifact-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.artifact-preview {
+  flex: 1;
+  overflow: auto;
+  background: #ffffff;
+}
+
+.artifact-preview::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.artifact-preview::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+}
+
+.artifact-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.artifact-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+}
+
+.artifact-code-input {
+  flex: 1;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: none;
+  padding: 20px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95em;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  tab-size: 2;
+}
+
+.artifact-code-input::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.artifact-code-input::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+}
+
+.artifact-editor-actions {
+  display: flex;
+  gap: 12px;
+  padding: 15px 20px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.3);
+  justify-content: flex-end;
+}
+
+.artifact-btn-secondary,
+.artifact-btn-primary {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.artifact-btn-secondary {
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.artifact-btn-secondary:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.artifact-btn-primary {
+  background: #ffffff;
+  color: #000000;
+}
+
+.artifact-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(255,255,255,0.3);
+}
+
+/* NEW: Code Artifact Button in Messages */
+.code-artifact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.9);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+  font-family: 'Inter', sans-serif;
+}
+
+.code-artifact-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.3);
+  transform: translateY(-2px);
+}
+
+.code-artifact-btn i {
+  font-size: 0.95em;
+}
+
+/* Mobile Responsive for New Features */
+@media (max-width: 768px) {
+  .danger-zone-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .danger-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .artifact-modal {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .artifact-header {
+    padding: 15px 20px;
+  }
+  
+  .artifact-title {
+    font-size: 1.1em;
+  }
+  
+  .artifact-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1em;
+  }
+  
+  .artifact-code-input {
+    padding: 15px;
+    font-size: 0.85em;
+  }
+  
+  .artifact-editor-actions {
+    flex-direction: column;
+  }
+  
+  .artifact-btn-secondary,
+  .artifact-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}

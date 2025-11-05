@@ -77,6 +77,35 @@
       <label class="settings-label">Confirm Password</label>
       <input type="password" id="settingsPasswordConfirm" class="settings-input" placeholder="Confirm new password">
     </div>
+
+    <!-- NEW: Danger Zone Section -->
+    <div class="settings-divider"></div>
+    
+    <div class="danger-zone">
+      <div class="danger-zone-title">
+        <i class="fas fa-exclamation-triangle"></i> Danger Zone
+      </div>
+      
+      <div class="danger-zone-item">
+        <div class="danger-zone-item-info">
+          <div class="danger-zone-item-title">Delete All Chats</div>
+          <div class="danger-zone-item-desc">Permanently delete all your chat history</div>
+        </div>
+        <button class="danger-btn" id="deleteAllChatsBtn">
+          <i class="fas fa-trash-alt"></i> Delete Chats
+        </button>
+      </div>
+      
+      <div class="danger-zone-item">
+        <div class="danger-zone-item-info">
+          <div class="danger-zone-item-title">Delete Account</div>
+          <div class="danger-zone-item-desc">Permanently delete your account and all data</div>
+        </div>
+        <button class="danger-btn danger-btn-critical" id="deleteAccountBtn">
+          <i class="fas fa-user-times"></i> Delete Account
+        </button>
+      </div>
+    </div>
     
     <div class="settings-buttons">
       <button class="settings-btn-cancel" id="settingsCancel">Cancel</button>
@@ -99,6 +128,41 @@
       <button class="confirm-btn confirm-btn-delete" id="confirmDelete">
         <i class="fas fa-trash"></i> Delete
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW: Code Artifact Overlay -->
+<div class="artifact-overlay" id="artifactOverlay">
+  <div class="artifact-modal">
+    <div class="artifact-header">
+      <div class="artifact-title">
+        <i class="fas fa-code"></i>
+        <span id="artifactTitle">Code Artifact</span>
+      </div>
+      <div class="artifact-actions">
+        <button class="artifact-btn" id="artifactEditBtn" title="Edit Code">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="artifact-btn" id="artifactCopyBtn" title="Copy Code">
+          <i class="fas fa-copy"></i>
+        </button>
+        <button class="artifact-btn" id="artifactCloseBtn" title="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <div class="artifact-content">
+      <div class="artifact-preview" id="artifactPreview"></div>
+      <div class="artifact-editor" id="artifactEditor" style="display: none;">
+        <textarea id="artifactCodeInput" class="artifact-code-input" spellcheck="false"></textarea>
+        <div class="artifact-editor-actions">
+          <button class="artifact-btn-secondary" id="artifactCancelEdit">Cancel</button>
+          <button class="artifact-btn-primary" id="artifactSaveEdit">
+            <i class="fas fa-play"></i> Run Code
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -173,6 +237,7 @@
 </div>
 <script src="chat/particles.js"></script>
 <script type="module" src="chat/imagegen.js"></script>
+<script type="module" src="chat/artifacts.js"></script>
 <script type="module" src="chat/main.js"></script>
 
 </body>
