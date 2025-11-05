@@ -660,6 +660,13 @@ function addMessageToUI(content, type) {
     speakerBtn.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
     speakerBtn.onclick = () => speakText(content, speakerBtn);
     messageContent.appendChild(speakerBtn);
+    
+    // NEW: Detect and create inline artifacts
+    setTimeout(() => {
+      if (typeof window.detectAndCreateArtifacts === 'function') {
+        window.detectAndCreateArtifacts(messageContent);
+      }
+    }, 100);
   } else {
     messageContent.textContent = content;
   }
@@ -668,21 +675,6 @@ function addMessageToUI(content, type) {
   wrapper.appendChild(messageContent);
   chatContainer.appendChild(wrapper);
   chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-// Enhanced addMessageToUI to support artifacts
-const originalAddMessageToUI = addMessageToUI;
-function addMessageToUI(content, type) {
-  originalAddMessageToUI(content, type);
-  
-  // After rendering, enhance code blocks
-  if (type === 'ai') {
-    setTimeout(() => {
-      if (typeof window.enhanceCodeBlocks === 'function') {
-        window.enhanceCodeBlocks();
-      }
-    }, 100);
-  }
 }
 
 function addSystemMessage(content) {
@@ -1138,5 +1130,20 @@ async function showDangerConfirm(title, message, confirmText) {
     confirmOverlay.addEventListener('click', overlayHandler);
   });
 }
+
+// Toggle sidebar
+window.toggleSidebar = function() {
+  const sidebar = document.querySelector('.sidebar');
+  const toggleBtn = document.querySelector('.sidebar-toggle-btn');
+  
+  sidebar.classList.toggle('collapsed');
+  
+  const icon = toggleBtn.querySelector('i');
+  if (sidebar.classList.contains('collapsed')) {
+    icon.className = 'fas fa-chevron-right';
+  } else {
+    icon.className = 'fas fa-chevron-left';
+  }
+};
 
 console.log('✅ Main.js loaded successfully');

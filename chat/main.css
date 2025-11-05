@@ -1327,6 +1327,221 @@ canvas#bgCanvas {
   border-color: rgba(255,0,0,0.6);
 }
 
+/* Sidebar Toggle */
+.sidebar-toggle-btn {
+  position: absolute;
+  top: 20px;
+  right: -15px;
+  width: 30px;
+  height: 30px;
+  background: #0a0a0a;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s ease;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.8em;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.sidebar-toggle-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.3);
+  color: #ffffff;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  padding: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .sidebar-toggle-btn {
+  right: -45px;
+  background: rgba(10,10,10,0.95);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+
+/* Show toggle button on desktop only */
+@media (min-width: 769px) {
+  .sidebar-toggle-btn {
+    display: flex;
+  }
+}
+
+/* Inline Artifact Styles */
+.inline-artifact {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 15px;
+}
+
+.inline-artifact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.inline-artifact-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+}
+
+.inline-artifact-title i {
+  color: rgba(255,255,255,0.6);
+}
+
+.inline-artifact-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.inline-artifact-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inline-artifact-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,1);
+}
+
+.inline-artifact-preview {
+  height: 400px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.inline-artifact-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.inline-artifact-editor {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+}
+
+.inline-artifact-code {
+  flex: 1;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: none;
+  padding: 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  overflow: auto;
+}
+
+.inline-artifact-code::-webkit-scrollbar {
+  width: 8px;
+}
+
+.inline-artifact-code::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+}
+
+.inline-artifact-editor-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.3);
+  justify-content: flex-end;
+}
+
+.inline-artifact-editor-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inline-artifact-editor-btn.secondary {
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.inline-artifact-editor-btn.secondary:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.inline-artifact-editor-btn.primary {
+  background: #ffffff;
+  color: #000000;
+}
+
+.inline-artifact-editor-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 15px rgba(255,255,255,0.3);
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    display: none;
+  }
+  
+  .inline-artifact-preview,
+  .inline-artifact-editor {
+    height: 300px;
+  }
+  
+  .inline-artifact-header {
+    padding: 10px 12px;
+  }
+  
+  .inline-artifact-title {
+    font-size: 0.85em;
+  }
+  
+  .inline-artifact-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85em;
+  }
+}
+
 /* NEW: Code Artifact Overlay */
 .artifact-overlay {
   position: fixed;
@@ -1336,18 +1551,15 @@ canvas#bgCanvas {
   bottom: 0;
   background: rgba(0,0,0,0.9);
   backdrop-filter: blur(10px);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 1004;
-  opacity: 0;
-  pointer-events: none;
   transition: opacity 0.3s ease;
 }
 
 .artifact-overlay.active {
-  opacity: 1;
-  pointer-events: all;
+  display: flex;
 }
 
 .artifact-modal {
@@ -1446,122 +1658,8 @@ canvas#bgCanvas {
   border: none;
 }
 
-.artifact-editor {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #1e1e1e;
-}
-
-.artifact-code-input {
-  flex: 1;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  border: none;
-  padding: 20px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.95em;
-  line-height: 1.6;
-  resize: none;
-  outline: none;
-  tab-size: 2;
-}
-
-.artifact-code-input::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.artifact-code-input::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.2);
-  border-radius: 4px;
-}
-
-.artifact-editor-actions {
-  display: flex;
-  gap: 12px;
-  padding: 15px 20px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  background: rgba(0,0,0,0.3);
-  justify-content: flex-end;
-}
-
-.artifact-btn-secondary,
-.artifact-btn-primary {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 0.95em;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: none;
-  font-family: 'Inter', sans-serif;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.artifact-btn-secondary {
-  background: rgba(255,255,255,0.1);
-  color: #ffffff;
-  border: 1px solid rgba(255,255,255,0.2);
-}
-
-.artifact-btn-secondary:hover {
-  background: rgba(255,255,255,0.15);
-}
-
-.artifact-btn-primary {
-  background: #ffffff;
-  color: #000000;
-}
-
-.artifact-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(255,255,255,0.3);
-}
-
-/* NEW: Code Artifact Button in Messages */
-.code-artifact-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.9);
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9em;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  margin-top: 10px;
-  font-family: 'Inter', sans-serif;
-}
-
-.code-artifact-btn:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.3);
-  transform: translateY(-2px);
-}
-
-.code-artifact-btn i {
-  font-size: 0.95em;
-}
-
-/* Mobile Responsive for New Features */
+/* Mobile adjustments for artifact modal */
 @media (max-width: 768px) {
-  .danger-zone-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .danger-btn {
-    width: 100%;
-    justify-content: center;
-  }
-  
   .artifact-modal {
     width: 100%;
     height: 100vh;
@@ -1582,18 +1680,17 @@ canvas#bgCanvas {
     height: 36px;
     font-size: 1em;
   }
-  
-  .artifact-code-input {
-    padding: 15px;
-    font-size: 0.85em;
-  }
-  
-  .artifact-editor-actions {
+}
+
+/* Mobile responsive for danger zone */
+@media (max-width: 768px) {
+  .danger-zone-item {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
   
-  .artifact-btn-secondary,
-  .artifact-btn-primary {
+  .danger-btn {
     width: 100%;
     justify-content: center;
   }

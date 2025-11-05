@@ -132,21 +132,15 @@
   </div>
 </div>
 
-<!-- NEW: Code Artifact Overlay -->
-<div class="artifact-overlay" id="artifactOverlay">
+<!-- NEW: Code Artifact Overlay (hidden by default, only for full-screen expansion) -->
+<div class="artifact-overlay" id="artifactOverlay" style="display: none;">
   <div class="artifact-modal">
     <div class="artifact-header">
       <div class="artifact-title">
         <i class="fas fa-code"></i>
-        <span id="artifactTitle">Code Artifact</span>
+        <span id="artifactTitle">Full Screen View</span>
       </div>
       <div class="artifact-actions">
-        <button class="artifact-btn" id="artifactEditBtn" title="Edit Code">
-          <i class="fas fa-edit"></i>
-        </button>
-        <button class="artifact-btn" id="artifactCopyBtn" title="Copy Code">
-          <i class="fas fa-copy"></i>
-        </button>
         <button class="artifact-btn" id="artifactCloseBtn" title="Close">
           <i class="fas fa-times"></i>
         </button>
@@ -154,21 +148,15 @@
     </div>
     <div class="artifact-content">
       <div class="artifact-preview" id="artifactPreview"></div>
-      <div class="artifact-editor" id="artifactEditor" style="display: none;">
-        <textarea id="artifactCodeInput" class="artifact-code-input" spellcheck="false"></textarea>
-        <div class="artifact-editor-actions">
-          <button class="artifact-btn-secondary" id="artifactCancelEdit">Cancel</button>
-          <button class="artifact-btn-primary" id="artifactSaveEdit">
-            <i class="fas fa-play"></i> Run Code
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </div>
 
 <div id="mainApp" style="display: none; width: 100%;">
   <div class="sidebar">
+    <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
+    <i class="fas fa-chevron-left"></i>
+  </button>
     <div class="logo">Snyaptium</div>
     <div class="user-info">
       <div class="user-name" id="userName">Loading...</div>

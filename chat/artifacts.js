@@ -1,29 +1,168 @@
 // Code Artifacts Module for Snyaptium Chat
-// Enables interactive code editing and preview like Claude Artifacts
+// Creates inline artifacts within the chat
 
-let currentArtifactCode = '';
-let currentArtifactTitle = 'Code Artifact';
+let artifactCounter = 0;
 
-// Open artifact window
-window.openArtifact = function(code, title = 'Code Artifact') {
-  currentArtifactCode = code;
-  currentArtifactTitle = title;
+// Create inline artifact
+window.createInlineArtifact = function(code, messageElement) {
+  artifactCounter++;
+  const artifactId = `artifact-${artifactCounter}`;
   
-  const overlay = document.getElementById('artifactOverlay');
-  const titleEl = document.getElementById('artifactTitle');
-  const preview = document.getElementById('artifactPreview');
+  const artifactDiv = document.createElement('div');
+  artifactDiv.className = 'inline-artifact';
+  artifactDiv.id = artifactId;
   
-  titleEl.textContent = title;
-  overlay.classList.add('active');
+  artifactDiv.innerHTML = `
+    <div class="inline-artifact-header">
+      <div class="inline-artifact-title">
+        <i class="fas fa-code"></i>
+        <span>Interactive Code</span>
+      </div>
+      <div class="inline-artifact-actions">
+        <button class="inline-artifact-btn" onclick="toggleArtifactEdit('${artifactId}')" title="Edit Code">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="inline-artifact-btn" onclick="copyArtifactCode('${artifactId}')" title="Copy Code">
+          <i class="fas fa-copy"></i>
+        </button>
+        <button class="inline-artifact-btn" onclick="expandArtifact('${artifactId}')" title="Expand">
+          <i class="fas fa-expand"></i>
+        </button>
+      </div>
+    </div>
+    <div class="inline-artifact-preview">
+      <iframe></iframe>
+    </div>
+    <div class="inline-artifact-editor" style="display: none;">
+      <textarea class="inline-artifact-code" spellcheck="false">${escapeHtml(code)}</textarea>
+      <div class="inline-artifact-editor-actions">
+        <button class="inline-artifact-editor-btn secondary" onclick="cancelArtifactEdit('${artifactId}')">
+          Cancel
+        </button>
+        <button class="inline-artifact-editor-btn primary" onclick="saveArtifactEdit('${artifactId}')">
+          <i class="fas fa-play"></i> Run Code
+        </button>
+      </div>
+    </div>
+  `;
   
-  renderArtifact(code);
+  messageElement.appendChild(artifactDiv);
+  
+  // Render initial code
+  renderInlineArtifact(artifactId, code);
+  
+  return artifactId;
 };
 
-// Render code in preview
-function renderArtifact(code) {
+// Render code in iframe
+function renderInlineArtifact(artifactId, code) {
+  const artifact = document.getElementById(artifactId);
+  if (!artifact) return;
+  
+  const iframe = artifact.querySelector('.inline-artifact-preview iframe');
+  if (!iframe) return;
+  
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  iframeDoc.open();
+  iframeDoc.write(code);
+  iframeDoc.close();
+}
+
+// Toggle edit mode
+window.toggleArtifactEdit = function(artifactId) {
+  const artifact = document.getElementById(artifactId);
+  if (!artifact) return;
+  
+  const preview = artifact.querySelector('.inline-artifact-preview');
+  const editor = artifact.querySelector('.inline-artifact-editor');
+  
+  if (editor.style.display === 'none') {
+    const iframe = preview.querySelector('iframe');
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    const currentCode = iframeDoc.documentElement.outerHTML;
+    
+    artifact.querySelector('.inline-artifact-code').value = currentCode;
+    
+    preview.style.display = 'none';
+    editor.style.display = 'flex';
+  } else {
+    preview.style.display = 'block';
+    editor.style.display = 'none';
+  }
+};
+
+// Cancel edit
+window.cancelArtifactEdit = function(artifactId) {
+  const artifact = document.getElementById(artifactId);
+  if (!artifact) return;
+  
+  const preview = artifact.querySelector('.inline-artifact-preview');
+  const editor = artifact.querySelector('.inline-artifact-editor');
+  
+  preview.style.display = 'block';
+  editor.style.display = 'none';
+};
+
+// Save and run edited code
+window.saveArtifactEdit = function(artifactId) {
+  const artifact = document.getElementById(artifactId);
+  if (!artifact) return;
+  
+  const preview = artifact.querySelector('.inline-artifact-preview');
+  const editor = artifact.querySelector('.inline-artifact-editor');
+  const code = artifact.querySelector('.inline-artifact-code').value;
+  
+  renderInlineArtifact(artifactId, code);
+  
+  preview.style.display = 'block';
+  editor.style.display = 'none';
+};
+
+// Copy code
+window.copyArtifactCode = function(artifactId) {
+  const artifact = document.getElementById(artifactId);
+  if (!artifact) return;
+  
+  const iframe = artifact.querySelector('.inline-artifact-preview iframe');
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  const code = iframeDoc.documentElement.outerHTML;
+  
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = artifact.querySelector('[title="Copy Code"]');
+    if (!btn) return;
+    
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i>';
+    setTimeout(() => {
+      btn.innerHTML = originalHTML;
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+  });
+};
+
+// Expand to full screen
+window.expandArtifact = function(artifactId) {
+  const artifact = document.getElementById(artifactId);
+  if (!artifact) return;
+  
+  const iframe = artifact.querySelector('.inline-artifact-preview iframe');
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  const code = iframeDoc.documentElement.outerHTML;
+  
+  openFullScreenArtifact(code);
+};
+
+// Full screen artifact (keep the modal for expansion)
+function openFullScreenArtifact(code) {
+  const overlay = document.getElementById('artifactOverlay');
   const preview = document.getElementById('artifactPreview');
   
-  // Create iframe for isolated execution
+  if (!overlay || !preview) return;
+  
+  overlay.style.display = 'flex';
+  overlay.classList.add('active');
+  
   const iframe = document.createElement('iframe');
   iframe.style.width = '100%';
   iframe.style.height = '100%';
@@ -33,94 +172,70 @@ function renderArtifact(code) {
   preview.innerHTML = '';
   preview.appendChild(iframe);
   
-  // Write code to iframe
   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
   iframeDoc.open();
   iframeDoc.write(code);
   iframeDoc.close();
 }
 
-// Event listeners
-document.getElementById('artifactCloseBtn').addEventListener('click', function() {
-  document.getElementById('artifactOverlay').classList.remove('active');
-});
+// Escape HTML for textarea
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
 
-document.getElementById('artifactEditBtn').addEventListener('click', function() {
-  const preview = document.getElementById('artifactPreview');
-  const editor = document.getElementById('artifactEditor');
-  const codeInput = document.getElementById('artifactCodeInput');
+// Detect and create artifacts from AI responses
+window.detectAndCreateArtifacts = function(messageElement) {
+  const codeBlocks = messageElement.querySelectorAll('pre code');
   
-  codeInput.value = currentArtifactCode;
-  preview.style.display = 'none';
-  editor.style.display = 'flex';
-});
-
-document.getElementById('artifactCancelEdit').addEventListener('click', function() {
-  const preview = document.getElementById('artifactPreview');
-  const editor = document.getElementById('artifactEditor');
-  
-  preview.style.display = 'block';
-  editor.style.display = 'none';
-});
-
-document.getElementById('artifactSaveEdit').addEventListener('click', function() {
-  const codeInput = document.getElementById('artifactCodeInput');
-  const preview = document.getElementById('artifactPreview');
-  const editor = document.getElementById('artifactEditor');
-  
-  currentArtifactCode = codeInput.value;
-  
-  renderArtifact(currentArtifactCode);
-  
-  preview.style.display = 'block';
-  editor.style.display = 'none';
-});
-
-document.getElementById('artifactCopyBtn').addEventListener('click', function() {
-  navigator.clipboard.writeText(currentArtifactCode).then(() => {
-    const btn = document.getElementById('artifactCopyBtn');
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-check"></i>';
-    setTimeout(() => {
-      btn.innerHTML = originalHTML;
-    }, 2000);
-  });
-});
-
-// Close on escape key
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    const overlay = document.getElementById('artifactOverlay');
-    if (overlay.classList.contains('active')) {
-      overlay.classList.remove('active');
-    }
-  }
-});
-
-// Detect code blocks in messages and add "Open in Artifact" button
-window.enhanceCodeBlocks = function() {
-  const codeBlocks = document.querySelectorAll('.message-content pre code');
-  
-  codeBlocks.forEach((codeBlock, index) => {
-    const pre = codeBlock.parentElement;
-    
-    // Skip if button already exists
-    if (pre.nextElementSibling && pre.nextElementSibling.classList.contains('code-artifact-btn')) {
-      return;
-    }
-    
+  codeBlocks.forEach((codeBlock) => {
     const code = codeBlock.textContent;
     
-    // Only add button for HTML/substantial code
-    if (code.length > 50 && (code.includes('<html') || code.includes('<!DOCTYPE') || code.includes('<body') || code.includes('<div'))) {
-      const btn = document.createElement('button');
-      btn.className = 'code-artifact-btn';
-      btn.innerHTML = '<i class="fas fa-external-link-alt"></i> Open in Artifact';
-      btn.onclick = () => openArtifact(code, `Code Artifact ${index + 1}`);
+    // Check if it's HTML code that should be an artifact
+    if (code.length > 100 && 
+        (code.includes('<!DOCTYPE') || 
+         code.includes('<html') || 
+         (code.includes('<body') || code.includes('<head')))) {
       
-      pre.parentElement.insertBefore(btn, pre.nextSibling);
+      // Remove the code block completely from DOM
+      const pre = codeBlock.parentElement;
+      pre.remove();
+      
+      // Create inline artifact
+      createInlineArtifact(code, messageElement);
     }
   });
 };
 
-console.log('✨ Code Artifacts Module loaded successfully');
+// Event listeners for full-screen modal
+document.addEventListener('DOMContentLoaded', function() {
+  const closeBtn = document.getElementById('artifactCloseBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      const overlay = document.getElementById('artifactOverlay');
+      if (overlay) {
+        overlay.classList.remove('active');
+        overlay.style.display = 'none';
+      }
+    });
+  }
+  
+  // Close on escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const overlay = document.getElementById('artifactOverlay');
+      if (overlay && overlay.classList.contains('active')) {
+        overlay.classList.remove('active');
+        overlay.style.display = 'none';
+      }
+    }
+  });
+});
+
+console.log('✨ Inline Code Artifacts Module loaded successfully');
