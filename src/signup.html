@@ -344,7 +344,6 @@ canvas {
     
     <div id="errorMessage" class="error-message"></div>
     
-    <!-- Login Form -->
     <div id="loginForm" class="form-container active">
       <form onsubmit="handleLogin(event)">
         <div class="form-group">
@@ -359,7 +358,6 @@ canvas {
       </form>
     </div>
     
-    <!-- Signup Form -->
     <div id="signupForm" class="form-container">
       <form onsubmit="handleSignup(event)">
         <div class="form-group">
@@ -384,7 +382,6 @@ canvas {
   </div>
 </div>
 
-<!-- Terms of Service Modal -->
 <div id="termsModal" class="model-overlay">
   <div class="model-modal">
     <div class="model-modal-header">
@@ -431,7 +428,6 @@ canvas {
   </div>
 </div>
 
-<!-- Privacy Policy Modal -->
 <div id="privacyModal" class="model-overlay">
   <div class="model-modal">
     <div class="model-modal-header">
@@ -483,7 +479,6 @@ canvas {
 </div>
 
 <script>
-// Global functions for inline event handlers
 window.switchTab = function(tab) {
   const tabs = document.querySelectorAll('.auth-tab');
   const forms = document.querySelectorAll('.form-container');
@@ -520,7 +515,6 @@ window.closeModal = function(type) {
   document.getElementById(modalId).classList.remove('active');
 }
 
-// Close modal on outside click
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.model-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
@@ -537,16 +531,39 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebas
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-// Fetch Firebase config from Netlify function
-const res = await fetch('/.netlify/functions/get-firebase');
-if (!res.ok) throw new Error('Failed to fetch Firebase config');
-const data = await res.json();
+const FIREBASE_WORKER_URL = 'https://snyaptium-firebase.craftedgamz.workers.dev';
 
-const app = initializeApp(data.firebaseConfig);
+let firebaseConfig;
+
+async function loadFirebaseConfig() {
+  try {
+    const res = await fetch(FIREBASE_WORKER_URL, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'snyaptium-firebase'
+      }
+    });
+    
+    if (!res.ok) {
+      throw new Error('Failed to fetch Firebase config');
+    }
+    
+    const data = await res.json();
+    firebaseConfig = data.firebaseConfig;
+    console.log('✅ Firebase config loaded successfully');
+  } catch (error) {
+    console.error('❌ Error loading Firebase config:', error);
+    throw error;
+  }
+}
+
+await loadFirebaseConfig();
+
+const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Redirect if already logged in
 auth.onAuthStateChanged((user) => {
   if (user) window.location.href = 'chat.html';
 });
@@ -607,7 +624,6 @@ window.handleSignup = async function(e) {
 </script>
 
 <script>
-// Create grid lines
 function createGridLines() {
   const spacing = 100;
   
@@ -628,7 +644,6 @@ function createGridLines() {
 
 createGridLines();
 
-// Particle animation
 const canvas = document.getElementById('bgCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
@@ -694,7 +709,6 @@ window.addEventListener('resize', ()=>{
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
   
-  // Recreate grid lines on resize
   document.querySelectorAll('.grid-line').forEach(line => line.remove());
   createGridLines();
 });
