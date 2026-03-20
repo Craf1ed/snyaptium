@@ -332,7 +332,12 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
       await saveCurrentChatFn();
 
     } else {
-      const apiMessages = [SYSTEM_PROMPT, ...messages];
+      const apiMessages = [SYSTEM_PROMPT, ...messages.map(m => ({
+        ...m,
+        content: Array.isArray(m.content)
+          ? (m.content.find(c => c.type === 'text')?.text || '[Image message]')
+          : m.content
+      }))];
 
       const response = await fetch(API_URL, {
         method: 'POST',
