@@ -262,7 +262,7 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
       const avatar = document.createElement('div');
       avatar.className = 'avatar ai';
       const img = document.createElement('img');
-      img.src = 'logo.png';
+      img.src = 'img/logo.png';
       img.alt = 'AI';
       avatar.appendChild(img);
       
@@ -368,7 +368,7 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
     const avatar = document.createElement('div');
     avatar.className = 'avatar ai';
     const img = document.createElement('img');
-    img.src = 'logo.png';
+    img.src = 'img/logo.png';
     img.alt = 'AI';
     avatar.appendChild(img);
     
@@ -409,7 +409,7 @@ window.loadChatWithImages = function(chat, addMessageToUIFn) {
         const avatar = document.createElement('div');
         avatar.className = 'avatar ai';
         const img = document.createElement('img');
-        img.src = 'logo.png';
+        img.src = 'img/logo.png';
         img.alt = 'AI';
         avatar.appendChild(img);
         

@@ -415,7 +415,7 @@ function addMessageToUI(content, type) {
     }
   } else {
     const img = document.createElement('img');
-    img.src   = 'logo.png';
+    img.src   = 'img/logo.png';
     img.alt   = 'AI';
     avatar.appendChild(img);
   }
@@ -478,7 +478,7 @@ function showTypingIndicator() {
   const avatar      = document.createElement('div');
   avatar.className  = 'avatar ai';
   const img = document.createElement('img');
-  img.src   = 'logo.png';
+  img.src   = 'img/logo.png';
   img.alt   = 'AI';
   avatar.appendChild(img);
 
