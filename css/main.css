@@ -1911,3 +1911,47 @@ canvas#bgCanvas {
     max-height: 160px;
   }
 }
+
+.message-content.streaming::after {
+  content: '▋';
+  display: inline-block;
+  animation: cursorBlink 0.7s steps(1) infinite;
+  color: rgba(255,255,255,0.7);
+  margin-left: 2px;
+  font-size: 0.9em;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.memory-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(160, 120, 255, 0.08);
+  border: 1px solid rgba(160, 120, 255, 0.25);
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin-top: 10px;
+  font-size: 0.82em;
+  color: rgba(180, 150, 255, 0.9);
+  animation: chipFadeIn 0.4s ease forwards;
+}
+
+.memory-chip i {
+  font-size: 0.9em;
+  color: rgba(160, 120, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.memory-chip strong {
+  color: rgba(210, 190, 255, 1);
+  font-weight: 600;
+}
+
+@keyframes chipFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

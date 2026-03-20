@@ -39,7 +39,7 @@ let userMemory     = {};
 let recognition    = null;
 let isListening    = false;
 let currentAudio   = null;
-let pendingImage   = null; // { base64: string, mimeType: string, previewUrl: string }
+let pendingImage   = null;
 
 function buildSystemPrompt() {
   let content = 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.';
@@ -85,7 +85,6 @@ function extractAndStripMemory(text) {
 window.extractAndStripMemory = extractAndStripMemory;
 window.saveMemoryEntry = saveMemoryEntry;
 
-// ── Image Vision ──────────────────────────────────────────────
 function initImageUpload() {
   const input = document.getElementById('imageUploadInput');
   if (!input) return;
@@ -154,7 +153,6 @@ function addMessageToUIWithImage(text, imageDataUrl, type) {
   }
   w.appendChild(av); w.appendChild(mc); cc.appendChild(w); cc.scrollTop = cc.scrollHeight;
 }
-// ─────────────────────────────────────────────────────────────
 
 function initSpeechRecognition() {
   if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
@@ -283,15 +281,36 @@ window.loadChat = async function (chatId) {
   }
   updateHistoryList();
 };
+
 async function saveCurrentChat() {
-  console.log('[SAVE] called — user:', !!currentUser, '| messages:', messages.length, '| chatId:', currentChatId);
   if (!currentUser || messages.length === 0) return;
   try {
     const firstContent = messages[0]?.content;
     const firstText = typeof firstContent === 'string' ? firstContent : (Array.isArray(firstContent) ? (firstContent.find(c => c.type === 'text')?.text || 'Image Message') : 'New Chat');
     let title = firstText.substring(0, 50);
     if (!currentChatId && messages.length >= 2) title = await generateChatTitle();
-    const data = { userId: currentUser.uid, title, messages, model: currentModel, updatedAt: serverTimestamp() };
+
+    const messagesForStorage = messages.map(m => {
+      if (m.type === 'image' && m.imageBase64) {
+        return { ...m, imageBase64: '[IMAGE_DATA]', _hasImage: true };
+      }
+      if (Array.isArray(m.content)) {
+        const textPart = m.content.find(c => c.type === 'text')?.text || '';
+        const imgPart  = m.content.find(c => c.type === 'image_url');
+        const imgUrl   = imgPart?.image_url?.url || null;
+        const safeImgUrl = imgUrl && imgUrl.startsWith('data:') ? '[IMAGE_DATA]' : imgUrl;
+        return {
+          ...m,
+          content: [
+            { type: 'text', text: textPart },
+            ...(safeImgUrl ? [{ type: 'image_url', image_url: { url: safeImgUrl }, _originalUrl: true }] : [])
+          ]
+        };
+      }
+      return m;
+    });
+
+    const data = { userId: currentUser.uid, title, messages: messagesForStorage, model: currentModel, updatedAt: serverTimestamp() };
     if (currentChatId) { await updateDoc(doc(db, 'chats', currentChatId), data); }
     else { const ref = await addDoc(collection(db, 'chats'), { ...data, createdAt: serverTimestamp() }); currentChatId = ref.id; }
     await loadChatHistory();
@@ -371,7 +390,6 @@ window.sendMessage = async function () {
   const msg     = input.value.trim();
   if (!msg && !pendingImage) return;
 
-  // ── Vision message (image attached) ──
   if (pendingImage) {
     const imageSnapshot = { ...pendingImage };
     const textMsg = msg || 'What is in this image?';
@@ -411,7 +429,6 @@ window.sendMessage = async function () {
     return;
   }
 
-  // ── Normal / image-gen message ──
   if (typeof window.sendMessageWithImageGen === 'function') {
     const wrappedAddMessage = (content, type) => {
       if (type === 'ai') {
@@ -422,13 +439,6 @@ window.sendMessage = async function () {
         addMessageToUI(content, type);
       }
     };
-    // Sanitize messages — strip any vision array content to plain text for non-vision models
-    const sanitizedMessages = messages.map(m => ({
-      ...m,
-      content: Array.isArray(m.content)
-        ? (m.content.find(c => c.type === 'text')?.text || '[Image message]')
-        : m.content
-    }));
     await window.sendMessageWithImageGen(API_KEY, API_URL, currentUser, messages, currentModel, buildSystemPrompt(), saveCurrentChat, wrappedAddMessage, hideTypingIndicator, showTypingIndicator);
     return;
   }
@@ -438,7 +448,6 @@ window.sendMessage = async function () {
   input.value = ''; input.style.height = 'auto'; input.disabled = true; sendBtn.disabled = true;
   showTypingIndicator();
 
-  // Sanitize any vision array content for non-vision models
   const sanitizedMsgs = messages.map(m => ({
     ...m,
     content: Array.isArray(m.content)
@@ -450,16 +459,66 @@ window.sendMessage = async function () {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-      body: JSON.stringify({ model: currentModel, messages: [buildSystemPrompt(), ...sanitizedMsgs], temperature: 0.7, max_tokens: 1024 })
+      body: JSON.stringify({ model: currentModel, messages: [buildSystemPrompt(), ...sanitizedMsgs], temperature: 0.7, max_tokens: 1024, stream: true })
     });
     if (!res.ok) throw new Error('API request failed');
-    const raw = (await res.json()).choices[0].message.content;
-    const { clean, entry } = extractAndStripMemory(raw);
+
     hideTypingIndicator();
-    addMessageToUI(clean, 'ai');
+
+    const cc = document.getElementById('chatContainer');
+    const w  = document.createElement('div'); w.className = 'message-wrapper ai';
+    const av = document.createElement('div'); av.className = 'avatar ai';
+    const avImg = document.createElement('img'); avImg.src = 'img/logo.png'; avImg.alt = 'AI'; av.appendChild(avImg);
+    const mc = document.createElement('div'); mc.className = 'message-content streaming';
+    w.appendChild(av); w.appendChild(mc); cc.appendChild(w);
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let raw = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+      for (const line of lines) {
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+          if (delta) {
+            raw += delta;
+            const { clean: liveClean } = extractAndStripMemory(raw);
+            mc.innerHTML = marked.parse(liveClean);
+            cc.scrollTop = cc.scrollHeight;
+            await new Promise(r => setTimeout(r, 18));
+          }
+        } catch (_) {}
+      }
+    }
+
+    mc.classList.remove('streaming');
+    const { clean, entry } = extractAndStripMemory(raw);
+    mc.innerHTML = marked.parse(clean);
+
+    if (entry?.key && entry?.value) {
+      const chip = document.createElement('div');
+      chip.className = 'memory-chip';
+      chip.innerHTML = `<i class="fas fa-brain"></i> <span>Memory saved: <strong>${entry.value}</strong></span>`;
+      mc.appendChild(chip);
+    }
+
+    const sb = document.createElement('button');
+    sb.className = 'speaker-btn';
+    sb.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+    sb.onclick = () => speakText(clean, sb);
+    mc.appendChild(sb);
+    setTimeout(() => { if (typeof window.detectAndCreateArtifacts === 'function') window.detectAndCreateArtifacts(mc); }, 100);
+
     messages.push({ role: 'assistant', content: clean });
     if (entry?.key && entry?.value) await saveMemoryEntry(entry.key, entry.value);
     await saveCurrentChat();
+
   } catch (e) {
     hideTypingIndicator();
     addMessageToUI('Sorry, I encountered an error. Please try again.', 'ai');
@@ -580,10 +639,8 @@ window.speakText = async function (text, button) {
 
   } catch (e) {
     console.warn('Groq TTS failed, falling back to browser TTS:', e);
-    button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-    button.classList.remove('playing');
-
     button.innerHTML = '<i class="fas fa-stop"></i> Stop';
+    button.classList.add('playing');
     const u = new SpeechSynthesisUtterance(clean);
     u.rate = 1; u.pitch = 1; u.volume = 1;
     u.onend = u.onerror = () => {

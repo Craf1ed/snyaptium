@@ -49,7 +49,6 @@ function checkSafety(prompt) {
   return true;
 }
 
-// Convert a blob URL to base64 data URL
 async function blobUrlToBase64(blobUrl) {
   const response = await fetch(blobUrl);
   const blob = await response.blob();
@@ -97,11 +96,10 @@ async function generateImage(prompt) {
   const blob = await response.blob();
   const blobUrl = URL.createObjectURL(blob);
 
-  // Convert immediately to base64 so it persists
   const base64 = await blobUrlToBase64(blobUrl);
-  URL.revokeObjectURL(blobUrl); // Clean up blob URL — we have base64 now
+  URL.revokeObjectURL(blobUrl);
 
-  return base64; // Returns a data: URL (persistent)
+  return base64;
 }
 
 function startCooldown() {
@@ -157,7 +155,7 @@ function createGeneratedImageElement(imageData, prompt) {
 
   const img = document.createElement('img');
   img.className = 'generated-image';
-  img.src = imageData; // Works with both base64 and blob URLs
+  img.src = imageData;
   img.alt = 'Generated image';
 
   const qualityBadge = document.createElement('div');
@@ -291,7 +289,6 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
       status.innerHTML = '<i class="fas fa-magic"></i> <span>Generating your image...</span>';
       progressBar.style.width = '60%';
 
-      // generateImage now returns a base64 data URL directly
       const imageBase64 = await generateImage(optimizedPrompt);
 
       progressBar.style.width = '100%';
@@ -320,12 +317,11 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
         }
       }, 500);
 
-      // Save base64 directly — persistent across sessions
       messages.push({
         role: 'assistant',
         content: `[Generated Image: ${optimizedPrompt}]`,
         type: 'image',
-        imageBase64: imageBase64, // base64 data URL, not a blob
+        imageBase64: imageBase64,
         prompt: optimizedPrompt
       });
 
@@ -341,27 +337,59 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
 
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify({
-          model: currentModel,
-          messages: apiMessages,
-          temperature: 0.7,
-          max_tokens: 1024
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+        body: JSON.stringify({ model: currentModel, messages: apiMessages, temperature: 0.7, max_tokens: 1024, stream: true })
       });
 
       if (!response.ok) throw new Error('API request failed');
 
-      const data = await response.json();
-      const aiMessage = data.choices[0].message.content;
-
       hideTypingIndicatorFn();
-      addMessageToUIFn(aiMessage, 'ai');
-      messages.push({ role: 'assistant', content: aiMessage });
 
+      const chatContainer = document.getElementById('chatContainer');
+      const wrapper = document.createElement('div'); wrapper.className = 'message-wrapper ai';
+      const avatar  = document.createElement('div'); avatar.className = 'avatar ai';
+      const avImg   = document.createElement('img'); avImg.src = 'img/logo.png'; avImg.alt = 'AI'; avatar.appendChild(avImg);
+      const messageContent = document.createElement('div'); messageContent.className = 'message-content streaming';
+      wrapper.appendChild(avatar); wrapper.appendChild(messageContent); chatContainer.appendChild(wrapper);
+
+      const reader  = response.body.getReader();
+      const decoder = new TextDecoder();
+      let rawText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+        for (const line of lines) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+            if (delta) {
+              rawText += delta;
+              messageContent.innerHTML = marked.parse(rawText);
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+              await new Promise(r => setTimeout(r, 18));
+            }
+          } catch (_) {}
+        }
+      }
+
+      messageContent.classList.remove('streaming');
+      addMessageToUIFn(rawText, 'ai');
+      const allWrappers = chatContainer.querySelectorAll('.message-wrapper.ai:not(#typingIndicator)');
+      const lastWrapper = allWrappers[allWrappers.length - 1];
+      if (lastWrapper !== wrapper) lastWrapper.remove();
+
+      const sb = document.createElement('button');
+      sb.className = 'speaker-btn';
+      sb.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+      sb.onclick = () => window.speakText(rawText, sb);
+      messageContent.appendChild(sb);
+      setTimeout(() => { if (typeof window.detectAndCreateArtifacts === 'function') window.detectAndCreateArtifacts(messageContent); }, 100);
+
+      messages.push({ role: 'assistant', content: rawText });
       await saveCurrentChatFn();
     }
 
@@ -405,7 +433,6 @@ window.loadChatWithImages = function(chat, addMessageToUIFn) {
 
   chat.messages.forEach(msg => {
     if (msg.role === 'user') {
-      // Handle vision messages (user uploaded image)
       if (Array.isArray(msg.content)) {
         const text = msg.content.find(c => c.type === 'text')?.text || '';
         const imageUrl = msg.content.find(c => c.type === 'image_url')?.image_url?.url || null;
@@ -413,12 +440,12 @@ window.loadChatWithImages = function(chat, addMessageToUIFn) {
         const cc = chatContainer;
         const w  = document.createElement('div'); w.className = 'message-wrapper user';
         const av = document.createElement('div'); av.className = 'avatar user';
-        av.textContent = '?'; // Will be overridden by main.js avatar logic if needed
+        av.textContent = '?';
 
         const mc = document.createElement('div'); mc.className = 'message-content';
         if (imageUrl) {
           const imgEl = document.createElement('img');
-          imgEl.src = imageUrl; // base64 data URL — persists fine
+          imgEl.src = imageUrl;
           imgEl.className = 'user-attached-image';
           imgEl.alt = 'Attached image';
           mc.appendChild(imgEl);
@@ -431,7 +458,6 @@ window.loadChatWithImages = function(chat, addMessageToUIFn) {
         addMessageToUIFn(msg.content, 'user');
       }
     } else if (msg.role === 'assistant') {
-      // Use imageBase64 (new) with fallback to imageUrl (legacy)
       const imageData = msg.imageBase64 || msg.imageUrl;
       if (msg.type === 'image' && imageData && msg.prompt) {
         const wrapper = document.createElement('div');
