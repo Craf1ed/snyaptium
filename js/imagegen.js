@@ -1,6 +1,3 @@
-// Image Generation Module for Snyaptium Chat
-// This module integrates image generation capabilities with a toggle button
-
 const IMAGE_GEN_CONFIG = {
   ENDPOINT: 'https://snyaptium-img.craftedgamz.workers.dev/',
   AUTH_TOKEN: 'Bearer testpw6767',
@@ -12,7 +9,6 @@ let imageGenCooldown = 0;
 let cooldownInterval = null;
 let isImageModeActive = false;
 
-// Extract or generate image prompt from user message
 async function extractImagePrompt(userMessage, API_KEY, API_URL) {
   try {
     const response = await fetch(API_URL, {
@@ -45,7 +41,6 @@ async function extractImagePrompt(userMessage, API_KEY, API_URL) {
   }
 }
 
-// Safety filter
 function checkSafety(prompt) {
   const lowerPrompt = prompt.toLowerCase();
   for (const keyword of IMAGE_GEN_CONFIG.SAFETY_KEYWORDS) {
@@ -56,7 +51,6 @@ function checkSafety(prompt) {
   return true;
 }
 
-// Generate image
 async function generateImage(prompt) {
   if (imageGenCooldown > 0) {
     throw new Error(`Please wait ${imageGenCooldown} seconds before generating another image.`);
@@ -94,7 +88,6 @@ async function generateImage(prompt) {
   return URL.createObjectURL(blob);
 }
 
-// Start cooldown timer
 function startCooldown() {
   imageGenCooldown = IMAGE_GEN_CONFIG.COOLDOWN_SECONDS;
   
@@ -111,7 +104,6 @@ function startCooldown() {
   }, 1000);
 }
 
-// Create image generation UI elements
 function createImageGenStatus(statusText, isGenerating = true) {
   const statusDiv = document.createElement('div');
   statusDiv.className = `image-gen-status ${isGenerating ? 'generating' : ''}`;
@@ -208,7 +200,6 @@ function downloadImage(url, filename) {
   document.body.removeChild(a);
 }
 
-// Toggle image generation mode
 window.toggleImageMode = function(forceState = null) {
   const imageBtn = document.getElementById('imageGenBtn');
   
@@ -231,7 +222,6 @@ window.toggleImageMode = function(forceState = null) {
   console.log('🎨 Image mode:', isImageModeActive ? 'ON' : 'OFF');
 };
 
-// Enhanced message sending with image generation support
 window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, messages, currentModel, SYSTEM_PROMPT, saveCurrentChatFn, addMessageToUIFn, hideTypingIndicatorFn, showTypingIndicatorFn) {
   const input = document.getElementById('userInput');
   const sendBtn = document.getElementById('sendBtn');
@@ -391,7 +381,6 @@ window.sendMessageWithImageGen = async function(API_KEY, API_URL, currentUser, m
   }
 };
 
-// Load chat with image support
 window.loadChatWithImages = function(chat, addMessageToUIFn) {
   const chatContainer = document.getElementById('chatContainer');
   chatContainer.innerHTML = '';
@@ -431,7 +420,6 @@ window.loadChatWithImages = function(chat, addMessageToUIFn) {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 };
 
-// Export functions for integration
 window.ImageGenModule = {
   extractImagePrompt,
   generateImage,

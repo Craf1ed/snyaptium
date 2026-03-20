@@ -1,9 +1,5 @@
-// Code Artifacts Module for Snyaptium Chat
-// Creates inline artifacts within the chat
-
 let artifactCounter = 0;
 
-// Create inline artifact
 window.createInlineArtifact = function(code, messageElement) {
   artifactCounter++;
   const artifactId = `artifact-${artifactCounter}`;
@@ -47,14 +43,12 @@ window.createInlineArtifact = function(code, messageElement) {
   `;
   
   messageElement.appendChild(artifactDiv);
-  
-  // Render initial code
+
   renderInlineArtifact(artifactId, code);
   
   return artifactId;
 };
 
-// Render code in iframe
 function renderInlineArtifact(artifactId, code) {
   const artifact = document.getElementById(artifactId);
   if (!artifact) return;
@@ -68,7 +62,6 @@ function renderInlineArtifact(artifactId, code) {
   iframeDoc.close();
 }
 
-// Toggle edit mode
 window.toggleArtifactEdit = function(artifactId) {
   const artifact = document.getElementById(artifactId);
   if (!artifact) return;
@@ -91,7 +84,6 @@ window.toggleArtifactEdit = function(artifactId) {
   }
 };
 
-// Cancel edit
 window.cancelArtifactEdit = function(artifactId) {
   const artifact = document.getElementById(artifactId);
   if (!artifact) return;
@@ -103,7 +95,6 @@ window.cancelArtifactEdit = function(artifactId) {
   editor.style.display = 'none';
 };
 
-// Save and run edited code
 window.saveArtifactEdit = function(artifactId) {
   const artifact = document.getElementById(artifactId);
   if (!artifact) return;
@@ -118,7 +109,6 @@ window.saveArtifactEdit = function(artifactId) {
   editor.style.display = 'none';
 };
 
-// Copy code
 window.copyArtifactCode = function(artifactId) {
   const artifact = document.getElementById(artifactId);
   if (!artifact) return;
@@ -141,7 +131,6 @@ window.copyArtifactCode = function(artifactId) {
   });
 };
 
-// Expand to full screen
 window.expandArtifact = function(artifactId) {
   const artifact = document.getElementById(artifactId);
   if (!artifact) return;
@@ -153,7 +142,6 @@ window.expandArtifact = function(artifactId) {
   openFullScreenArtifact(code);
 };
 
-// Full screen artifact (keep the modal for expansion)
 function openFullScreenArtifact(code) {
   const overlay = document.getElementById('artifactOverlay');
   const preview = document.getElementById('artifactPreview');
@@ -178,7 +166,6 @@ function openFullScreenArtifact(code) {
   iframeDoc.close();
 }
 
-// Escape HTML for textarea
 function escapeHtml(text) {
   const map = {
     '&': '&amp;',
@@ -190,30 +177,25 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// Detect and create artifacts from AI responses
 window.detectAndCreateArtifacts = function(messageElement) {
   const codeBlocks = messageElement.querySelectorAll('pre code');
   
   codeBlocks.forEach((codeBlock) => {
     const code = codeBlock.textContent;
     
-    // Check if it's HTML code that should be an artifact
     if (code.length > 100 && 
         (code.includes('<!DOCTYPE') || 
          code.includes('<html') || 
          (code.includes('<body') || code.includes('<head')))) {
       
-      // Remove the code block completely from DOM
       const pre = codeBlock.parentElement;
       pre.remove();
       
-      // Create inline artifact
       createInlineArtifact(code, messageElement);
     }
   });
 };
 
-// Event listeners for full-screen modal
 document.addEventListener('DOMContentLoaded', function() {
   const closeBtn = document.getElementById('artifactCloseBtn');
   if (closeBtn) {
@@ -226,7 +208,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Close on escape key
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
       const overlay = document.getElementById('artifactOverlay');
@@ -238,4 +219,4 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-console.log('✨ Inline Code Artifacts Module loaded successfully');
+console.log('Inline Code Artifacts Module loaded successfully');

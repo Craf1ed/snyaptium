@@ -3,19 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Snyaptium Account Settings</title>
+  <title>Snyaptium — Account Settings</title>
   <link rel="icon" type="image/png" href="img/logo.png">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/account.css">
 </head>
 <body>
+
   <canvas id="bgCanvas"></canvas>
-  <div id="loadingScreen" class="loading-screen">
-    <div class="loader-ring"></div>
-  </div>
+
+  <div id="loadingScreen" class="loading-screen">Loading...</div>
 
   <div id="toast" class="toast"></div>
+
   <div class="confirm-overlay" id="confirmOverlay">
     <div class="confirm-modal">
       <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
@@ -35,7 +36,6 @@
         <img src="img/logo.png" alt="Snyaptium" onerror="this.style.display='none'">
         <span>Snyaptium</span>
       </div>
-
       <nav class="sidebar-nav">
         <a href="chat.html" class="nav-item">
           <i class="fas fa-arrow-left"></i>
@@ -46,14 +46,11 @@
           <span>Account</span>
         </a>
       </nav>
-
       <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="sidebar-avatar" id="sidebarAvatar">U</div>
-          <div class="sidebar-user-info">
-            <div class="sidebar-user-name" id="sidebarName">Loading…</div>
-            <div class="sidebar-user-email" id="sidebarEmail"></div>
-          </div>
+        <div class="sidebar-avatar" id="sidebarAvatar">U</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">Loading…</div>
+          <div class="sidebar-user-email" id="sidebarEmail"></div>
         </div>
         <button class="logout-btn" id="logoutBtn" title="Sign out">
           <i class="fas fa-sign-out-alt"></i>
@@ -66,7 +63,7 @@
       <header class="page-header">
         <div class="page-header-left">
           <h1 class="page-title">Account Settings</h1>
-          <p class="page-subtitle">Manage your profile, security, and preferences.</p>
+          <p class="page-subtitle">Manage your profile, memory, and security.</p>
         </div>
         <button class="mobile-back-btn" onclick="history.back()">
           <i class="fas fa-arrow-left"></i>
@@ -80,7 +77,6 @@
             <span class="card-icon"><i class="fas fa-id-card"></i></span>
             <h2 class="card-title">Profile</h2>
           </div>
-
           <div class="profile-pic-row">
             <div class="avatar-wrap">
               <div class="avatar-preview" id="avatarPreview">
@@ -98,7 +94,6 @@
               </button>
             </div>
           </div>
-
           <div class="field-group">
             <label class="field-label">Display Name</label>
             <div class="field-wrap">
@@ -106,7 +101,6 @@
               <input type="text" id="settingsName" class="field-input" placeholder="Your name">
             </div>
           </div>
-
           <div class="field-group">
             <label class="field-label">Email Address</label>
             <div class="field-wrap disabled">
@@ -115,10 +109,36 @@
             </div>
             <span class="field-hint">Email cannot be changed here.</span>
           </div>
-
           <button class="btn btn-primary" id="saveProfileBtn">
             <i class="fas fa-check"></i> Save Profile
           </button>
+        </section>
+
+        <section class="card" id="memoryCard">
+          <div class="card-header">
+            <span class="card-icon"><i class="fas fa-brain"></i></span>
+            <h2 class="card-title">AI Memory</h2>
+          </div>
+          <p class="memory-desc">These are facts the AI knows about you and uses in every conversation. The AI can learn new facts automatically, or you can add them manually.</p>
+
+          <div class="memory-add-row">
+            <div class="field-wrap memory-key-wrap">
+              <input type="text" id="memoryKeyInput" class="field-input" placeholder="Label (e.g. job)">
+            </div>
+            <div class="field-wrap memory-val-wrap">
+              <input type="text" id="memoryValueInput" class="field-input" placeholder="Value (e.g. software engineer)">
+            </div>
+            <button class="btn btn-primary memory-add-btn" id="addMemoryBtn">
+              <i class="fas fa-plus"></i> Add
+            </button>
+          </div>
+
+          <div class="memory-list" id="memoryList">
+            <div class="memory-empty" id="memoryEmpty">
+              <i class="fas fa-brain"></i>
+              <span>No memory yet. Chat with the AI or add facts above.</span>
+            </div>
+          </div>
         </section>
 
         <section class="card" id="securityCard">
@@ -126,55 +146,54 @@
             <span class="card-icon"><i class="fas fa-shield-alt"></i></span>
             <h2 class="card-title">Security</h2>
           </div>
-
           <div class="field-group">
             <label class="field-label">New Password</label>
             <div class="field-wrap">
               <i class="fas fa-lock field-icon"></i>
               <input type="password" id="settingsPassword" class="field-input" placeholder="Leave blank to keep current">
-              <button class="field-toggle" id="togglePwd" type="button" tabindex="-1">
-                <i class="fas fa-eye"></i>
-              </button>
+              <button class="field-toggle" id="togglePwd" type="button" tabindex="-1"><i class="fas fa-eye"></i></button>
             </div>
           </div>
-
           <div class="field-group">
             <label class="field-label">Confirm Password</label>
             <div class="field-wrap">
               <i class="fas fa-lock field-icon"></i>
               <input type="password" id="settingsPasswordConfirm" class="field-input" placeholder="Repeat new password">
-              <button class="field-toggle" id="togglePwdConfirm" type="button" tabindex="-1">
-                <i class="fas fa-eye"></i>
-              </button>
+              <button class="field-toggle" id="togglePwdConfirm" type="button" tabindex="-1"><i class="fas fa-eye"></i></button>
             </div>
             <div class="pwd-strength" id="pwdStrength" style="display:none;">
               <div class="pwd-bar"><div class="pwd-bar-fill" id="pwdBarFill"></div></div>
               <span class="pwd-label" id="pwdLabel"></span>
             </div>
           </div>
-
           <button class="btn btn-primary" id="savePasswordBtn">
             <i class="fas fa-key"></i> Update Password
           </button>
         </section>
+
         <section class="card danger-card" id="dangerCard">
           <div class="card-header">
             <span class="card-icon danger-icon"><i class="fas fa-exclamation-triangle"></i></span>
             <h2 class="card-title">Danger Zone</h2>
           </div>
-
+          <div class="danger-row">
+            <div class="danger-info">
+              <div class="danger-title">Clear AI Memory</div>
+              <div class="danger-desc">Wipes all facts the AI knows about you.</div>
+            </div>
+            <button class="btn btn-danger" id="clearMemoryBtn">
+              <i class="fas fa-eraser"></i> Clear Memory
+            </button>
+          </div>
           <div class="danger-row">
             <div class="danger-info">
               <div class="danger-title">Delete All Chats</div>
-              <div class="danger-desc">Permanently removes all chat history. Cannot be undone.</div>
+              <div class="danger-desc">Permanently removes all chat history.</div>
             </div>
             <button class="btn btn-danger" id="deleteAllChatsBtn">
               <i class="fas fa-trash-alt"></i> Delete Chats
             </button>
           </div>
-
-          <div class="danger-divider"></div>
-
           <div class="danger-row">
             <div class="danger-info">
               <div class="danger-title">Delete Account</div>

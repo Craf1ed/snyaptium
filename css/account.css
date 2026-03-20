@@ -1,4 +1,3 @@
-/* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -32,7 +31,6 @@ body {
   position: relative;
 }
 
-/* Grid texture — identical to chat */
 body::before {
   content: '';
   position: fixed;
@@ -45,7 +43,6 @@ body::before {
   z-index: 0;
 }
 
-/* ── Canvas background ───────────────────────────────────── */
 #bgCanvas {
   position: fixed;
   top: 0; left: 0;
@@ -54,7 +51,6 @@ body::before {
   pointer-events: none;
 }
 
-/* ── Loading ─────────────────────────────────────────────── */
 .loading-screen {
   position: fixed;
   inset: 0;
@@ -75,7 +71,6 @@ body::before {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Toast ───────────────────────────────────────────────── */
 .toast {
   position: fixed;
   bottom: 28px; left: 50%;
@@ -99,7 +94,6 @@ body::before {
 }
 .toast.error { border-color: var(--danger); color: #ff8080; }
 
-/* ── Confirm overlay — same as chat's confirm modal ─────── */
 .confirm-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.8);
@@ -149,7 +143,6 @@ body::before {
   box-shadow: 0 5px 20px rgba(255,68,68,0.4);
 }
 
-/* ── Layout ──────────────────────────────────────────────── */
 #mainApp {
   display: flex;
   min-height: 100vh;
@@ -157,7 +150,6 @@ body::before {
   z-index: 1;
 }
 
-/* ── Sidebar — matches chat sidebar exactly ──────────────── */
 .sidebar {
   width: 280px;
   background: var(--surface);
@@ -246,7 +238,6 @@ body::before {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Logout button — same style as chat's .logout-btn */
 .logout-btn {
   background: transparent;
   border: 1px solid var(--border);
@@ -264,7 +255,6 @@ body::before {
   color: var(--text);
 }
 
-/* ── Main content ────────────────────────────────────────── */
 .content {
   margin-left: 280px;
   flex: 1;
@@ -272,7 +262,6 @@ body::before {
   max-width: 860px;
 }
 
-/* ── Page header ─────────────────────────────────────────── */
 .page-header {
   display: flex;
   align-items: flex-start;
@@ -291,14 +280,12 @@ body::before {
 }
 .mobile-back-btn { display: none; }
 
-/* ── Settings grid ───────────────────────────────────────── */
 .settings-grid {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-/* ── Card — same feel as chat's model-modal / confirm-modal ─ */
 .card {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
@@ -342,7 +329,6 @@ body::before {
   letter-spacing: -0.5px;
 }
 
-/* ── Profile pic ─────────────────────────────────────────── */
 .profile-pic-row {
   display: flex;
   align-items: center;
@@ -365,7 +351,6 @@ body::before {
 .avatar-ring { display: none; }
 .avatar-actions { display: flex; flex-direction: column; gap: 8px; }
 
-/* ── Form fields — same visual as chat's .input-field ──── */
 .field-group { margin-bottom: 20px; }
 .field-label {
   display: block;
@@ -419,8 +404,6 @@ body::before {
   font-size: 0.85em;
   color: var(--text-dim);
 }
-
-/* ── Password strength ───────────────────────────────────── */
 .pwd-strength { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
 .pwd-bar {
   flex: 1; height: 3px;
@@ -433,7 +416,6 @@ body::before {
 }
 .pwd-label { font-size: 0.8em; color: var(--text-muted); min-width: 44px; }
 
-/* ── Buttons ─────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -448,7 +430,6 @@ body::before {
   white-space: nowrap;
 }
 
-/* White button — same as chat's .new-chat-btn and .send-btn */
 .btn-primary {
   background: #ffffff;
   color: #000000;
@@ -460,7 +441,6 @@ body::before {
 }
 .btn-primary:active { transform: none; box-shadow: none; }
 
-/* Outline — same as chat's .settings-btn / .logout-btn */
 .btn-outline {
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--border);
@@ -471,7 +451,6 @@ body::before {
   border-color: var(--border-hover);
 }
 
-/* Ghost */
 .btn-ghost {
   background: none; border: none;
   color: var(--text-muted);
@@ -479,7 +458,6 @@ body::before {
 }
 .btn-ghost:hover { color: #ff6b6b; }
 
-/* Danger — matches chat's .danger-btn */
 .btn-danger {
   background: var(--danger-bg);
   border: 1px solid var(--danger-border);
@@ -503,7 +481,6 @@ body::before {
 }
 .btn i { font-size: 0.9em; }
 
-/* ── Danger card — matches chat's .danger-zone ───────────── */
 .danger-card {
   border-color: var(--danger-border);
   background: rgba(255,68,68,0.03);
@@ -529,7 +506,6 @@ body::before {
 }
 .danger-divider { display: none; }
 
-/* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -566,4 +542,122 @@ body::before {
   .confirm-buttons { flex-direction: column; }
   .confirm-btn-cancel,
   .confirm-btn-delete { width: 100%; justify-content: center; }
+}
+
+.memory-desc {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.memory-add-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: stretch;
+}
+.memory-key-wrap { flex: 1; min-width: 0; }
+.memory-val-wrap { flex: 2; min-width: 0; }
+.memory-add-btn  { margin-top: 0; flex-shrink: 0; }
+.memory-list { display: flex; flex-direction: column; gap: 8px; }
+.memory-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-size: 0.9em;
+}
+.memory-empty i { font-size: 1.1em; }
+.memory-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color var(--transition);
+  animation: cardIn .25s ease both;
+}
+.memory-item:hover { border-color: var(--border-hover); }
+.memory-item-content {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.memory-item-key {
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.memory-item-value {
+  font-size: 0.92em;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.memory-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.memory-delete-btn:hover { color: var(--danger); background: var(--danger-bg); }
+@media (max-width: 768px) {
+  .memory-add-row { flex-direction: column; }
+  .memory-add-btn { width: 100%; justify-content: center; }
+}
+
+.sidebar-toggle-btn {
+  position: fixed;
+  top: 20px;
+  left: 280px;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  background: #0a0a0a;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: left 0.3s ease, background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.8em;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.sidebar-toggle-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.3);
+  color: #ffffff;
+}
+
+.sidebar.collapsed ~ .sidebar-toggle-btn {
+  left: 0px;
+}
+
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    display: none;
+  }
 }

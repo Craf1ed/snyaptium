@@ -62,7 +62,6 @@
   </div>
 </div>
 
-<!-- Code Artifact Overlay -->
 <div class="artifact-overlay" id="artifactOverlay" style="display: none;">
   <div class="artifact-modal">
     <div class="artifact-header">
@@ -84,9 +83,6 @@
 
 <div id="mainApp" style="display: none; width: 100%;">
   <div class="sidebar">
-    <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
-      <i class="fas fa-chevron-left"></i>
-    </button>
     <div class="logo">Snyaptium</div>
     <div class="user-info">
       <div class="user-name" id="userName">Loading...</div>
@@ -107,6 +103,11 @@
       <div id="historyList"></div>
     </div>
   </div>
+
+  <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()">
+    <i class="fas fa-chevron-left"></i>
+  </button>
+
   <div class="main-content">
     <div class="chat-container" id="chatContainer">
       <div class="welcome-screen">
