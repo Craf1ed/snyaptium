@@ -39,6 +39,7 @@ let userMemory     = {};
 let recognition    = null;
 let isListening    = false;
 let currentAudio   = null;
+let pendingImage   = null; // { base64: string, mimeType: string, previewUrl: string }
 
 function buildSystemPrompt() {
   let content = 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.';
@@ -84,6 +85,77 @@ function extractAndStripMemory(text) {
 window.extractAndStripMemory = extractAndStripMemory;
 window.saveMemoryEntry = saveMemoryEntry;
 
+// ── Image Vision ──────────────────────────────────────────────
+function initImageUpload() {
+  const input = document.getElementById('imageUploadInput');
+  if (!input) return;
+  input.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      alert('Image must be under 4MB.');
+      input.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      const base64  = dataUrl.split(',')[1];
+      pendingImage  = { base64, mimeType: file.type, previewUrl: dataUrl };
+      showImagePreview(dataUrl);
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  });
+}
+
+function showImagePreview(url) {
+  let preview = document.getElementById('imagePreviewBar');
+  if (!preview) {
+    preview = document.createElement('div');
+    preview.id = 'imagePreviewBar';
+    preview.className = 'image-preview-bar';
+    const inputArea = document.querySelector('.input-wrapper');
+    inputArea.parentElement.insertBefore(preview, inputArea);
+  }
+  preview.innerHTML = `
+    <div class="image-preview-thumb-wrap">
+      <img src="${url}" class="image-preview-thumb" alt="Attached image">
+      <button class="image-preview-remove" onclick="clearPendingImage()" title="Remove image">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <span class="image-preview-label"><i class="fas fa-eye"></i> Vision mode — using Llama 4 Scout</span>
+  `;
+}
+
+window.clearPendingImage = function () {
+  pendingImage = null;
+  document.getElementById('imagePreviewBar')?.remove();
+};
+
+function addMessageToUIWithImage(text, imageDataUrl, type) {
+  hideWelcomeScreen();
+  const cc = document.getElementById('chatContainer');
+  const w  = document.createElement('div'); w.className = `message-wrapper ${type}`;
+  const av = document.createElement('div'); av.className = `avatar ${type}`;
+  if (userProfilePic) { av.classList.add('has-image'); const img = document.createElement('img'); img.src = userProfilePic; img.alt = 'User'; av.appendChild(img); }
+  else { av.textContent = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase(); }
+  const mc = document.createElement('div'); mc.className = 'message-content';
+  if (imageDataUrl) {
+    const imgEl = document.createElement('img');
+    imgEl.src = imageDataUrl;
+    imgEl.className = 'user-attached-image';
+    imgEl.alt = 'Attached image';
+    mc.appendChild(imgEl);
+  }
+  if (text) {
+    const p = document.createElement('p'); p.textContent = text; mc.appendChild(p);
+  }
+  w.appendChild(av); w.appendChild(mc); cc.appendChild(w); cc.scrollTop = cc.scrollHeight;
+}
+// ─────────────────────────────────────────────────────────────
+
 function initSpeechRecognition() {
   if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -123,6 +195,7 @@ onAuthStateChanged(auth, async (user) => {
     await loadUserProfile();
     await loadUserMemory();
     initSpeechRecognition();
+    initImageUpload();
     await loadChatHistory();
     initCustomDropdown();
     initMobileUI();
@@ -210,11 +283,13 @@ window.loadChat = async function (chatId) {
   }
   updateHistoryList();
 };
-
 async function saveCurrentChat() {
+  console.log('[SAVE] called — user:', !!currentUser, '| messages:', messages.length, '| chatId:', currentChatId);
   if (!currentUser || messages.length === 0) return;
   try {
-    let title = messages[0]?.content?.substring(0, 50) || 'New Chat';
+    const firstContent = messages[0]?.content;
+    const firstText = typeof firstContent === 'string' ? firstContent : (Array.isArray(firstContent) ? (firstContent.find(c => c.type === 'text')?.text || 'Image Message') : 'New Chat');
+    let title = firstText.substring(0, 50);
     if (!currentChatId && messages.length >= 2) title = await generateChatTitle();
     const data = { userId: currentUser.uid, title, messages, model: currentModel, updatedAt: serverTimestamp() };
     if (currentChatId) { await updateDoc(doc(db, 'chats', currentChatId), data); }
@@ -294,8 +369,49 @@ window.sendMessage = async function () {
   const input   = document.getElementById('userInput');
   const sendBtn = document.getElementById('sendBtn');
   const msg     = input.value.trim();
-  if (!msg) return;
+  if (!msg && !pendingImage) return;
 
+  // ── Vision message (image attached) ──
+  if (pendingImage) {
+    const imageSnapshot = { ...pendingImage };
+    const textMsg = msg || 'What is in this image?';
+    clearPendingImage();
+    input.value = ''; input.style.height = 'auto'; input.disabled = true; sendBtn.disabled = true;
+
+    addMessageToUIWithImage(msg, imageSnapshot.previewUrl, 'user');
+
+    const visionContent = [
+      { type: 'text', text: textMsg },
+      { type: 'image_url', image_url: { url: `data:${imageSnapshot.mimeType};base64,${imageSnapshot.base64}` } }
+    ];
+    messages.push({ role: 'user', content: visionContent });
+    showTypingIndicator();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+        body: JSON.stringify({ model: 'meta-llama/llama-4-scout-17b-16e-instruct', messages: [buildSystemPrompt(), ...messages], temperature: 0.7, max_tokens: 1024 })
+      });
+      if (!res.ok) throw new Error('Vision API request failed');
+      const raw = (await res.json()).choices[0].message.content;
+      const { clean, entry } = extractAndStripMemory(raw);
+      hideTypingIndicator();
+      addMessageToUI(clean, 'ai');
+      messages.push({ role: 'assistant', content: clean });
+      if (entry?.key && entry?.value) await saveMemoryEntry(entry.key, entry.value);
+      await saveCurrentChat();
+    } catch (e) {
+      hideTypingIndicator();
+      addMessageToUI('Sorry, I couldn\'t process that image. Please try again.', 'ai');
+      console.error(e);
+    } finally {
+      input.disabled = false; sendBtn.disabled = false; input.focus();
+    }
+    return;
+  }
+
+  // ── Normal / image-gen message ──
   if (typeof window.sendMessageWithImageGen === 'function') {
     const wrappedAddMessage = (content, type) => {
       if (type === 'ai') {
@@ -306,6 +422,13 @@ window.sendMessage = async function () {
         addMessageToUI(content, type);
       }
     };
+    // Sanitize messages — strip any vision array content to plain text for non-vision models
+    const sanitizedMessages = messages.map(m => ({
+      ...m,
+      content: Array.isArray(m.content)
+        ? (m.content.find(c => c.type === 'text')?.text || '[Image message]')
+        : m.content
+    }));
     await window.sendMessageWithImageGen(API_KEY, API_URL, currentUser, messages, currentModel, buildSystemPrompt(), saveCurrentChat, wrappedAddMessage, hideTypingIndicator, showTypingIndicator);
     return;
   }
@@ -315,11 +438,19 @@ window.sendMessage = async function () {
   input.value = ''; input.style.height = 'auto'; input.disabled = true; sendBtn.disabled = true;
   showTypingIndicator();
 
+  // Sanitize any vision array content for non-vision models
+  const sanitizedMsgs = messages.map(m => ({
+    ...m,
+    content: Array.isArray(m.content)
+      ? (m.content.find(c => c.type === 'text')?.text || '[Image message]')
+      : m.content
+  }));
+
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-      body: JSON.stringify({ model: currentModel, messages: [buildSystemPrompt(), ...messages], temperature: 0.7, max_tokens: 1024 })
+      body: JSON.stringify({ model: currentModel, messages: [buildSystemPrompt(), ...sanitizedMsgs], temperature: 0.7, max_tokens: 1024 })
     });
     if (!res.ok) throw new Error('API request failed');
     const raw = (await res.json()).choices[0].message.content;
@@ -361,7 +492,8 @@ async function generateRecommendations() {
 
 async function generateChatTitle() {
   try {
-    const u = messages.find(m => m.role === 'user')?.content || '';
+    const rawU = messages.find(m => m.role === 'user')?.content;
+    const u = typeof rawU === 'string' ? rawU : (Array.isArray(rawU) ? (rawU.find(c => c.type === 'text')?.text || 'Image message') : '');
     const a = messages.find(m => m.role === 'assistant')?.content || '';
     const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` }, body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: `Generate a short, descriptive title (3-6 words max) for a chat conversation that started with:\nUser: "${u.substring(0,200)}"\nAssistant: "${a.substring(0,200)}"\n\nOnly respond with the title, nothing else. No quotes or punctuation at the end.` }], temperature: 0.7, max_tokens: 30 }) });
     if (!res.ok) throw new Error();

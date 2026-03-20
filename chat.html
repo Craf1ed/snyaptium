@@ -169,6 +169,10 @@
         <button class="image-gen-btn" id="imageGenBtn" onclick="toggleImageMode()">
           <i class="far fa-image"></i>
         </button>
+        <button class="vision-upload-btn" id="visionUploadBtn" onclick="document.getElementById('imageUploadInput').click()" title="Attach image for AI vision">
+          <i class="fas fa-paperclip"></i>
+        </button>
+        <input type="file" id="imageUploadInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
         <textarea id="userInput" class="input-field" placeholder="Lets talk about..." rows="1" onkeydown="handleKeyPress(event)" oninput="autoResize(this)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()">
           <i class="fas fa-paper-plane"></i>
