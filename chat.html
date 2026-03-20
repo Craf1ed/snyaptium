@@ -44,77 +44,6 @@
   </div>
 </div>
 
-<div class="settings-overlay" id="settingsOverlay">
-  <div class="settings-modal">
-    <div class="settings-modal-title">User Settings</div>
-    
-    <div class="profile-pic-section">
-      <div class="profile-pic-preview" id="profilePicPreview">
-        <span id="profilePicInitial">U</span>
-      </div>
-      <div class="profile-pic-actions">
-        <label for="profilePicInput" class="file-input-label">
-          <i class="fas fa-upload"></i> Upload Picture
-        </label>
-        <input type="file" id="profilePicInput" accept="image/*">
-        <br>
-        <button class="remove-pic-btn" id="removePicBtn">
-          <i class="fas fa-times"></i> Remove Picture
-        </button>
-      </div>
-    </div>
-    
-    <div class="settings-section">
-      <label class="settings-label">Display Name</label>
-      <input type="text" id="settingsName" class="settings-input" placeholder="Enter your name">
-    </div>
-    
-    <div class="settings-section">
-      <label class="settings-label">New Password</label>
-      <input type="password" id="settingsPassword" class="settings-input" placeholder="Leave blank to keep current">
-    </div>
-    
-    <div class="settings-section">
-      <label class="settings-label">Confirm Password</label>
-      <input type="password" id="settingsPasswordConfirm" class="settings-input" placeholder="Confirm new password">
-    </div>
-
-    <!-- NEW: Danger Zone Section -->
-    <div class="settings-divider"></div>
-    
-    <div class="danger-zone">
-      <div class="danger-zone-title">
-        <i class="fas fa-exclamation-triangle"></i> Danger Zone
-      </div>
-      
-      <div class="danger-zone-item">
-        <div class="danger-zone-item-info">
-          <div class="danger-zone-item-title">Delete All Chats</div>
-          <div class="danger-zone-item-desc">Permanently delete all your chat history</div>
-        </div>
-        <button class="danger-btn" id="deleteAllChatsBtn">
-          <i class="fas fa-trash-alt"></i> Delete Chats
-        </button>
-      </div>
-      
-      <div class="danger-zone-item">
-        <div class="danger-zone-item-info">
-          <div class="danger-zone-item-title">Delete Account</div>
-          <div class="danger-zone-item-desc">Permanently delete your account and all data</div>
-        </div>
-        <button class="danger-btn danger-btn-critical" id="deleteAccountBtn">
-          <i class="fas fa-user-times"></i> Delete Account
-        </button>
-      </div>
-    </div>
-    
-    <div class="settings-buttons">
-      <button class="settings-btn-cancel" id="settingsCancel">Cancel</button>
-      <button class="settings-btn-save" id="settingsSave">Save Changes</button>
-    </div>
-  </div>
-</div>
-
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-modal">
     <div class="confirm-icon">
@@ -133,7 +62,7 @@
   </div>
 </div>
 
-<!-- NEW: Code Artifact Overlay (hidden by default, only for full-screen expansion) -->
+<!-- Code Artifact Overlay -->
 <div class="artifact-overlay" id="artifactOverlay" style="display: none;">
   <div class="artifact-modal">
     <div class="artifact-header">
@@ -156,15 +85,15 @@
 <div id="mainApp" style="display: none; width: 100%;">
   <div class="sidebar">
     <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
-    <i class="fas fa-chevron-left"></i>
-  </button>
+      <i class="fas fa-chevron-left"></i>
+    </button>
     <div class="logo">Snyaptium</div>
     <div class="user-info">
       <div class="user-name" id="userName">Loading...</div>
       <div class="user-actions">
-        <button class="settings-btn" onclick="openSettings()">
+        <a class="settings-btn" href="account.html" title="Account Settings">
           <i class="fas fa-cog"></i>
-        </button>
+        </a>
         <button class="logout-btn" onclick="handleLogout()">
           <i class="fas fa-sign-out-alt"></i>
         </button>
@@ -224,6 +153,7 @@
     </div>
   </div>
 </div>
+
 <script src="js/particles.js"></script>
 <script type="module" src="js/imagegen.js"></script>
 <script type="module" src="js/artifacts.js"></script>

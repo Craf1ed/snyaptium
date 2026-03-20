@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snyaptium Account Settings</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/account.css">
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loader-ring"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-modal">
+      <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
+      <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+      <div class="confirm-message" id="confirmMessage">This action cannot be undone.</div>
+      <div class="confirm-buttons">
+        <button class="confirm-btn-cancel" id="confirmCancel"><i class="fas fa-times"></i> Cancel</button>
+        <button class="confirm-btn-delete" id="confirmDelete"><i class="fas fa-trash"></i> Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mainApp" style="display:none;">
+
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <img src="logo.png" alt="Snyaptium" onerror="this.style.display='none'">
+        <span>Snyaptium</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="chat.html" class="nav-item">
+          <i class="fas fa-arrow-left"></i>
+          <span>Back to Chat</span>
+        </a>
+        <a href="account.html" class="nav-item active">
+          <i class="fas fa-user-circle"></i>
+          <span>Account</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebarAvatar">U</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebarName">Loading…</div>
+            <div class="sidebar-user-email" id="sidebarEmail"></div>
+          </div>
+        </div>
+        <button class="logout-btn" id="logoutBtn" title="Sign out">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+
+      <header class="page-header">
+        <div class="page-header-left">
+          <h1 class="page-title">Account Settings</h1>
+          <p class="page-subtitle">Manage your profile, security, and preferences.</p>
+        </div>
+        <button class="mobile-back-btn" onclick="history.back()">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+      </header>
+
+      <div class="settings-grid">
+
+        <section class="card" id="profileCard">
+          <div class="card-header">
+            <span class="card-icon"><i class="fas fa-id-card"></i></span>
+            <h2 class="card-title">Profile</h2>
+          </div>
+
+          <div class="profile-pic-row">
+            <div class="avatar-wrap">
+              <div class="avatar-preview" id="avatarPreview">
+                <span id="avatarInitial">U</span>
+              </div>
+              <div class="avatar-ring"></div>
+            </div>
+            <div class="avatar-actions">
+              <label for="profilePicInput" class="btn btn-outline">
+                <i class="fas fa-upload"></i> Upload photo
+              </label>
+              <input type="file" id="profilePicInput" accept="image/*" hidden>
+              <button class="btn btn-ghost" id="removePicBtn">
+                <i class="fas fa-times"></i> Remove
+              </button>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Display Name</label>
+            <div class="field-wrap">
+              <i class="fas fa-user field-icon"></i>
+              <input type="text" id="settingsName" class="field-input" placeholder="Your name">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Email Address</label>
+            <div class="field-wrap disabled">
+              <i class="fas fa-envelope field-icon"></i>
+              <input type="email" id="settingsEmail" class="field-input" placeholder="email@example.com" disabled>
+            </div>
+            <span class="field-hint">Email cannot be changed here.</span>
+          </div>
+
+          <button class="btn btn-primary" id="saveProfileBtn">
+            <i class="fas fa-check"></i> Save Profile
+          </button>
+        </section>
+
+        <section class="card" id="securityCard">
+          <div class="card-header">
+            <span class="card-icon"><i class="fas fa-shield-alt"></i></span>
+            <h2 class="card-title">Security</h2>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">New Password</label>
+            <div class="field-wrap">
+              <i class="fas fa-lock field-icon"></i>
+              <input type="password" id="settingsPassword" class="field-input" placeholder="Leave blank to keep current">
+              <button class="field-toggle" id="togglePwd" type="button" tabindex="-1">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Confirm Password</label>
+            <div class="field-wrap">
+              <i class="fas fa-lock field-icon"></i>
+              <input type="password" id="settingsPasswordConfirm" class="field-input" placeholder="Repeat new password">
+              <button class="field-toggle" id="togglePwdConfirm" type="button" tabindex="-1">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div class="pwd-strength" id="pwdStrength" style="display:none;">
+              <div class="pwd-bar"><div class="pwd-bar-fill" id="pwdBarFill"></div></div>
+              <span class="pwd-label" id="pwdLabel"></span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="savePasswordBtn">
+            <i class="fas fa-key"></i> Update Password
+          </button>
+        </section>
+        <section class="card danger-card" id="dangerCard">
+          <div class="card-header">
+            <span class="card-icon danger-icon"><i class="fas fa-exclamation-triangle"></i></span>
+            <h2 class="card-title">Danger Zone</h2>
+          </div>
+
+          <div class="danger-row">
+            <div class="danger-info">
+              <div class="danger-title">Delete All Chats</div>
+              <div class="danger-desc">Permanently removes all chat history. Cannot be undone.</div>
+            </div>
+            <button class="btn btn-danger" id="deleteAllChatsBtn">
+              <i class="fas fa-trash-alt"></i> Delete Chats
+            </button>
+          </div>
+
+          <div class="danger-divider"></div>
+
+          <div class="danger-row">
+            <div class="danger-info">
+              <div class="danger-title">Delete Account</div>
+              <div class="danger-desc">Wipes your account and all data permanently.</div>
+            </div>
+            <button class="btn btn-danger btn-danger-critical" id="deleteAccountBtn">
+              <i class="fas fa-user-times"></i> Delete Account
+            </button>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="js/account.js"></script>
+  <script src="js/particles.js"></script>
+</body>
+</html>
