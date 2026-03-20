@@ -542,7 +542,6 @@ canvas#bgCanvas {
 .suggestion-card-text { font-size: 0.9em; color: rgba(255,255,255,0.6); }
 .loading-screen { display: flex; align-items: center; justify-content: center; height: 100vh; font-size: 1.5em; color: rgba(255,255,255,0.6); position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; background: #000000; }
 
-/* Voice Input Button */
 .voice-input-btn { 
   background: rgba(255,255,255,0.05); 
   color: #ffffff; 
@@ -582,7 +581,6 @@ canvas#bgCanvas {
   }
 }
 
-/* Image Generation Button */
 .image-gen-btn {
   background: rgba(255,255,255,0.05); 
   color: #ffffff; 
@@ -622,7 +620,6 @@ canvas#bgCanvas {
   }
 }
 
-/* Speaker Button for AI Messages */
 .speaker-btn {
   background: transparent;
   border: 1px solid rgba(255,255,255,0.2);
@@ -655,7 +652,6 @@ canvas#bgCanvas {
   font-size: 0.9em;
 }
 
-/* Image Generation Styles */
 .image-generation-wrapper {
   display: flex;
   flex-direction: column;
@@ -886,7 +882,6 @@ canvas#bgCanvas {
   font-size: 0.9em;
 }
 
-/* Mobile Support */
 @media (max-width: 768px) { 
   body { 
     flex-direction: column; 
@@ -1188,7 +1183,6 @@ canvas#bgCanvas {
   }
 }
 
-/* Extra Small Mobile Devices */
 @media (max-width: 380px) {
   .welcome-title {
     font-size: 1.6em;
@@ -1213,7 +1207,6 @@ canvas#bgCanvas {
   }
 }
 
-/* Landscape Mobile */
 @media (max-width: 768px) and (orientation: landscape) {
   .welcome-screen {
     padding: 15px;
@@ -1238,14 +1231,12 @@ canvas#bgCanvas {
   }
 }
 
-/* NEW: Settings Divider */
 .settings-divider {
   height: 1px;
   background: rgba(255,255,255,0.1);
   margin: 30px 0;
 }
 
-/* NEW: Danger Zone Styles */
 .danger-zone {
   background: rgba(255,68,68,0.05);
   border: 1px solid rgba(255,68,68,0.2);
@@ -1327,7 +1318,6 @@ canvas#bgCanvas {
   border-color: rgba(255,0,0,0.6);
 }
 
-/* Sidebar Toggle */
 .sidebar-toggle-btn {
   position: absolute;
   top: 20px;
@@ -1367,14 +1357,12 @@ canvas#bgCanvas {
   box-shadow: 0 2px 12px rgba(0,0,0,0.5);
 }
 
-/* Show toggle button on desktop only */
 @media (min-width: 769px) {
   .sidebar-toggle-btn {
     display: flex;
   }
 }
 
-/* Inline Artifact Styles */
 .inline-artifact {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.15);
@@ -1516,7 +1504,6 @@ canvas#bgCanvas {
   box-shadow: 0 3px 15px rgba(255,255,255,0.3);
 }
 
-/* Mobile adjustments */
 @media (max-width: 768px) {
   .sidebar-toggle-btn {
     display: none;
@@ -1542,7 +1529,6 @@ canvas#bgCanvas {
   }
 }
 
-/* NEW: Code Artifact Overlay */
 .artifact-overlay {
   position: fixed;
   top: 0;
@@ -1658,7 +1644,6 @@ canvas#bgCanvas {
   border: none;
 }
 
-/* Mobile adjustments for artifact modal */
 @media (max-width: 768px) {
   .artifact-modal {
     width: 100%;
@@ -1682,7 +1667,6 @@ canvas#bgCanvas {
   }
 }
 
-/* Mobile responsive for danger zone */
 @media (max-width: 768px) {
   .danger-zone-item {
     flex-direction: column;
@@ -1693,5 +1677,111 @@ canvas#bgCanvas {
   .danger-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+.voice-selector {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.voice-selector-label {
+  font-size: 0.85em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.voice-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.voice-option {
+  background: rgba(255,255,255,0.03);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: rgba(255,255,255,0.6);
+  font-size: 0.9em;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.voice-option:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.25);
+  color: #ffffff;
+  transform: translateX(3px);
+}
+
+.voice-option.selected {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.4);
+  color: #ffffff;
+}
+
+.voice-option[data-voice="autumn"],
+.voice-option[data-voice="diana"],
+.voice-option[data-voice="hannah"] {
+  border-color: rgba(255,150,180,0.25);
+  color: rgba(255,150,180,0.8);
+}
+
+.voice-option[data-voice="autumn"]:hover,
+.voice-option[data-voice="diana"]:hover,
+.voice-option[data-voice="hannah"]:hover {
+  background: rgba(255,150,180,0.08);
+  border-color: rgba(255,150,180,0.5);
+  color: rgba(255,180,210,1);
+}
+
+.voice-option[data-voice="autumn"].selected,
+.voice-option[data-voice="diana"].selected,
+.voice-option[data-voice="hannah"].selected {
+  background: rgba(255,150,180,0.15);
+  border-color: rgba(255,150,180,0.7);
+  color: #ffb3d1;
+}
+
+.voice-option[data-voice="austin"],
+.voice-option[data-voice="daniel"],
+.voice-option[data-voice="troy"] {
+  border-color: rgba(150,200,255,0.25);
+  color: rgba(150,200,255,0.8);
+}
+
+.voice-option[data-voice="austin"]:hover,
+.voice-option[data-voice="daniel"]:hover,
+.voice-option[data-voice="troy"]:hover {
+  background: rgba(150,200,255,0.08);
+  border-color: rgba(150,200,255,0.5);
+  color: rgba(180,220,255,1);
+}
+
+.voice-option[data-voice="austin"].selected,
+.voice-option[data-voice="daniel"].selected,
+.voice-option[data-voice="troy"].selected {
+  background: rgba(150,200,255,0.15);
+  border-color: rgba(150,200,255,0.7);
+  color: #b3d9ff;
+}
+
+@media (max-width: 768px) {
+  .voice-options {
+    gap: 6px;
+  }
+
+  .voice-option {
+    padding: 8px 14px;
+    font-size: 0.85em;
   }
 }

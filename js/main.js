@@ -9,6 +9,8 @@ let firebaseConfig;
 let API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
+let currentVoice = 'daniel';
+
 async function loadEnv() {
   const [firebaseRes, aiRes] = await Promise.all([
     fetch(FIREBASE_WORKER_URL, { method: 'GET', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'snyaptium-firebase' } }),
@@ -127,6 +129,14 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('mainApp').style.display       = 'flex';
     setTimeout(generateRecommendations, 1000);
+  document.querySelectorAll('.voice-option').forEach(v => {
+    v.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.voice-option').forEach(x => x.classList.remove('selected'));
+      v.classList.add('selected');
+      currentVoice = v.getAttribute('data-voice');
+    });
+  });
   } catch (error) {
     console.error('Error during initialization:', error);
     alert('Error loading app. Please refresh the page.');
@@ -189,7 +199,7 @@ window.loadChat = async function (chatId) {
   const chat = chatHistory.find(c => c.id === chatId);
   if (!chat) return;
   currentChatId = chatId; messages = chat.messages || []; currentModel = chat.model || 'llama-3.3-70b-versatile';
-  const names = { 'llama-3.3-70b-versatile': 'LLaMA 3.3 70B Versatile', 'llama-3.1-8b-instant': 'LLaMA 3.1 8B Instant', 'compound-beta': 'Groq Compound Beta', 'openai/gpt-oss-120b': 'GPT OSS 120B', 'openai/gpt-oss-20b': 'GPT OSS 20B' };
+  const names = { 'llama-3.3-70b-versatile': 'LLaMA 3.3 70B Versatile', 'llama-3.1-8b-instant': 'LLaMA 3.1 8B Instant', 'compound-beta': 'Groq Compound Beta', 'openai/gpt-oss-120b': 'GPT OSS 120B', 'openai/gpt-oss-20b': 'GPT OSS 20B', 'groq/compound-mini': 'Groq Compound Mini', 'qwen/qwen3-32b': 'Qwen3 32B', 'moonshotai/kimi-k2-instruct-0905': 'Kimi K2' };
   document.getElementById('selectedModel').textContent = names[currentModel] || 'LLaMA 3.3 70B Versatile';
   document.querySelectorAll('.model-option').forEach(o => o.classList.toggle('selected', o.getAttribute('data-value') === currentModel));
   if (typeof window.loadChatWithImages === 'function') {
@@ -361,21 +371,98 @@ async function generateChatTitle() {
 
 window.toggleVoiceInput = function () {
   if (!recognition) { alert('Speech recognition is not supported in your browser.'); return; }
-  if (isListening) { recognition.stop(); stopVoiceInput(); } else { recognition.start(); isListening = true; const b = document.getElementById('voiceInputBtn'); b.classList.add('listening'); b.innerHTML = '<i class="fas fa-stop"></i>'; }
+  if (isListening) {
+    recognition.abort();
+    stopVoiceInput();
+  } else {
+    try {
+      recognition.start();
+      isListening = true;
+      const b = document.getElementById('voiceInputBtn');
+      b.classList.add('listening');
+      b.innerHTML = '<i class="fas fa-stop"></i>';
+    } catch (e) {
+      stopVoiceInput();
+    }
+  }
 };
 
 function stopVoiceInput() { isListening = false; const b = document.getElementById('voiceInputBtn'); b.classList.remove('listening'); b.innerHTML = '<i class="fas fa-microphone"></i>'; }
 
-window.speakText = function (text, button) {
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; document.querySelectorAll('.speaker-btn.playing').forEach(b => { b.classList.remove('playing'); b.innerHTML = '<i class="fas fa-volume-up"></i> Listen'; }); }
-  if (button.classList.contains('playing')) { button.classList.remove('playing'); button.innerHTML = '<i class="fas fa-volume-up"></i> Listen'; return; }
-  const clean = text.replace(/#{1,6}\s/g,'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/`{1,3}[^`]*`{1,3}/g,'').replace(/\[([^\]]+)\]\([^\)]+\)/g,'$1').replace(/^\s*[-*+]\s/gm,'').trim();
-  if (!('speechSynthesis' in window)) { alert('Text-to-speech is not supported in your browser.'); return; }
-  const u = new SpeechSynthesisUtterance(clean); u.rate = 1; u.pitch = 1; u.volume = 1;
-  button.classList.add('playing'); button.innerHTML = '<i class="fas fa-stop"></i> Stop';
-  u.onend = u.onerror = () => { button.classList.remove('playing'); button.innerHTML = '<i class="fas fa-volume-up"></i> Listen'; currentAudio = null; };
-  window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-  currentAudio = { pause: () => window.speechSynthesis.cancel() };
+window.speakText = async function (text, button) {
+  const wasThisButtonPlaying = button.classList.contains('playing');
+
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+    document.querySelectorAll('.speaker-btn.playing').forEach(b => {
+      b.classList.remove('playing');
+      b.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+    });
+  }
+
+  if (wasThisButtonPlaying) return;
+
+  const clean = text
+    .replace(/#{1,6}\s/g, '').replace(/\*\*/g, '').replace(/\*/g, '')
+    .replace(/`{1,3}[^`]*`{1,3}/g, '').replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/^\s*[-*+]\s/gm, '').trim();
+
+  button.classList.add('playing');
+  button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'canopylabs/orpheus-v1-english',
+        input: clean,
+        voice: currentVoice,
+        response_format: 'wav'
+      })
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudio = audio;
+      button.innerHTML = '<i class="fas fa-stop"></i> Stop';
+
+      audio.play();
+      audio.onended = audio.onerror = () => {
+        button.classList.remove('playing');
+        button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+      };
+      return;
+    }
+    const errText = await res.text();
+    console.error('Groq TTS error response:', res.status, errText);
+    throw new Error('Groq TTS failed');
+
+  } catch (e) {
+    console.warn('Groq TTS failed, falling back to browser TTS:', e);
+    button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+    button.classList.remove('playing');
+
+    button.innerHTML = '<i class="fas fa-stop"></i> Stop';
+    const u = new SpeechSynthesisUtterance(clean);
+    u.rate = 1; u.pitch = 1; u.volume = 1;
+    u.onend = u.onerror = () => {
+      button.classList.remove('playing');
+      button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
+      currentAudio = null;
+    };
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+    currentAudio = { pause: () => window.speechSynthesis.cancel() };
+  }
 };
 
 window.toggleSidebar = function () {
