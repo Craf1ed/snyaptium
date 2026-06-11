@@ -277,7 +277,7 @@ window.loadChat = async function (chatId) {
     window.loadChatWithImages(chat, addMessageToUI);
   } else {
     document.getElementById('chatContainer').innerHTML = '';
-    messages.forEach(m => { if (m.role === 'user') addMessageToUI(m.content, 'user'); else if (m.role === 'assistant') addMessageToUI(m.content, 'ai'); });
+    messages.forEach(m => { if (m.role === 'user') addMessageToUI(m.content, 'user'); else if (m.role === 'assistant') { const { clean } = extractAndStripMemory(m.content); addMessageToUI(clean, 'ai'); } });
   }
   updateHistoryList();
 };
@@ -288,7 +288,7 @@ async function saveCurrentChat() {
     const firstContent = messages[0]?.content;
     const firstText = typeof firstContent === 'string' ? firstContent : (Array.isArray(firstContent) ? (firstContent.find(c => c.type === 'text')?.text || 'Image Message') : 'New Chat');
     let title = firstText.substring(0, 50);
-    if (!currentChatId && messages.length >= 2) title = await generateChatTitle();
+    if (!currentChatId && messages.length >= 1) title = await generateChatTitle();
 
     const messagesForStorage = messages.map(m => {
       if (m.type === 'image' && m.imageBase64) {
