@@ -36,13 +36,17 @@ let aiRecommendations           = [];
 let isGeneratingRecommendations = false;
 let userProfilePic = null;
 let userMemory     = {};
+let userCharacters = [];
+let currentCharacter = null;
 let recognition    = null;
 let isListening    = false;
 let currentAudio   = null;
 let pendingImage   = null;
+let isAdultContent = false;
+let ageConfirmed   = false;
 
 function buildSystemPrompt() {
-  let content = 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.';
+  let content = currentCharacter ? currentCharacter.prompt : 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.';
 
   const entries = Object.entries(userMemory);
   if (entries.length > 0) {
@@ -64,6 +68,57 @@ async function loadUserMemory() {
   }
 }
 
+async function loadUserCharacters() {
+  try {
+    const snap = await getDocs(query(collection(db, 'characters'), where('userId', '==', currentUser.uid)));
+    userCharacters = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    updateCharacterOptions();
+  } catch (e) {
+    console.error('Error loading characters:', e);
+    userCharacters = [];
+    updateCharacterOptions();
+  }
+}
+
+function updateCharacterOptions() {
+  const list = document.getElementById('botOptionsList');
+  const tip = document.getElementById('characterTip');
+  if (!list) return;
+  list.innerHTML = '';
+  userCharacters.forEach(character => {
+    const option = document.createElement('div');
+    option.className = 'bot-option';
+    option.setAttribute('data-bot-id', character.id);
+    option.innerHTML = `
+      <div class="bot-option-name">${escapeHtml(character.name)}</div>
+      <div class="bot-option-desc">${escapeHtml(character.prompt.substring(0, 60))}${character.prompt.length > 60 ? '...' : ''}</div>
+    `;
+    option.addEventListener('click', () => selectCharacter(character));
+    list.appendChild(option);
+  });
+  if (tip) {
+    tip.style.display = userCharacters.length === 0 ? 'flex' : 'none';
+  }
+}
+
+function selectCharacter(character) {
+  currentCharacter = character;
+  document.getElementById('selectedBot').textContent = character ? character.name : 'Choose a custom character';
+  document.querySelectorAll('.bot-option').forEach(o => o.classList.remove('selected'));
+  if (character) {
+    const option = document.querySelector(`.bot-option[data-bot-id="${character.id}"]`);
+    if (option) option.classList.add('selected');
+  } else {
+    document.querySelector('.bot-option[data-bot-id=""]').classList.add('selected');
+  }
+  document.getElementById('botOverlay').classList.remove('active');
+  addSystemMessage(character ? `Now chatting with ${character.name}` : 'Now using default Snyaptium');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 async function saveMemoryEntry(key, value) {
   try {
     if (!key?.trim() || !value?.trim()) return;
@@ -75,11 +130,47 @@ async function saveMemoryEntry(key, value) {
 }
 
 function extractAndStripMemory(text) {
-  const match = text.match(/\[MEMORY:(\{[^}]+\})\][\s\r\n]*/);
-  if (!match) return { clean: text, entry: null };
-  let entry = null;
-  try { entry = JSON.parse(match[1]); } catch (_) {}
-  return { clean: text.slice(0, match.index).trimEnd(), entry };
+  console.log('extractAndStripMemory called with text:', text.substring(0, 100));
+  // Match various memory JSON formats
+  const patterns = [
+    /\[MEMORY:\s*(\{[^}]*\})\s*\]/,
+    /\[MEMORY:(\{[^}]+\})\][\s\r\n]*/,
+    /\{[\s\S]*?"memory"[\s\S]*?\{[\s\S]*?\}[\s\S]*?\}/,
+    /\{[\s\S]*?"key"[\s\S]*?"value"[\s\S]*?\}/
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      console.log('Memory matched with pattern:', pattern);
+      console.log('Match groups:', match);
+      let entry = null;
+      try {
+        // Try to parse as JSON
+        const jsonStr = match[1] || match[0];
+        entry = JSON.parse(jsonStr);
+        // If it's a nested structure, extract the memory part
+        if (entry.memory) entry = entry.memory;
+        console.log('Parsed memory entry:', entry);
+      } catch (_) {
+        console.log('JSON parse failed, trying key-value extraction');
+        // Try to extract key-value from the matched string
+        const keyMatch = match[0].match(/"key"\s*:\s*"([^"]+)"/);
+        const valueMatch = match[0].match(/"value"\s*:\s*"([^"]+)"/);
+        if (keyMatch && valueMatch) {
+          entry = { key: keyMatch[1], value: valueMatch[1] };
+          console.log('Extracted key-value:', entry);
+        }
+      }
+      const cleanText = text.slice(0, match.index).trimEnd();
+      console.log('Cleaned text length:', cleanText.length);
+      console.log('Cleaned text:', cleanText.substring(0, 100));
+      return { clean: cleanText, entry };
+    }
+  }
+
+  console.log('No memory pattern matched');
+  return { clean: text, entry: null };
 }
 
 window.extractAndStripMemory = extractAndStripMemory;
@@ -192,10 +283,12 @@ onAuthStateChanged(auth, async (user) => {
   try {
     await loadUserProfile();
     await loadUserMemory();
+    await loadUserCharacters();
     initSpeechRecognition();
     initImageUpload();
     await loadChatHistory();
     initCustomDropdown();
+    initBotSelector();
     initMobileUI();
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('mainApp').style.display       = 'flex';
@@ -270,6 +363,8 @@ window.loadChat = async function (chatId) {
   const chat = chatHistory.find(c => c.id === chatId);
   if (!chat) return;
   currentChatId = chatId; messages = chat.messages || []; currentModel = chat.model || 'llama-3.3-70b-versatile';
+  isAdultContent = chat.isAdultContent || false;
+  ageConfirmed = chat.ageConfirmed || false;
   const names = { 'llama-3.3-70b-versatile': 'LLaMA 3.3 70B Versatile', 'llama-3.1-8b-instant': 'LLaMA 3.1 8B Instant', 'compound-beta': 'Groq Compound Beta', 'openai/gpt-oss-120b': 'GPT OSS 120B', 'openai/gpt-oss-20b': 'GPT OSS 20B', 'groq/compound-mini': 'Groq Compound Mini', 'qwen/qwen3-32b': 'Qwen3 32B', 'moonshotai/kimi-k2-instruct-0905': 'Kimi K2' };
   document.getElementById('selectedModel').textContent = names[currentModel] || 'LLaMA 3.3 70B Versatile';
   document.querySelectorAll('.model-option').forEach(o => o.classList.toggle('selected', o.getAttribute('data-value') === currentModel));
@@ -280,6 +375,10 @@ window.loadChat = async function (chatId) {
     messages.forEach(m => { if (m.role === 'user') addMessageToUI(m.content, 'user'); else if (m.role === 'assistant') { const { clean } = extractAndStripMemory(m.content); addMessageToUI(clean, 'ai'); } });
   }
   updateHistoryList();
+  updateBotSelectorState();
+  if (isAdultContent && !ageConfirmed) {
+    showAgeConfirm();
+  }
 };
 
 async function saveCurrentChat() {
@@ -288,7 +387,11 @@ async function saveCurrentChat() {
     const firstContent = messages[0]?.content;
     const firstText = typeof firstContent === 'string' ? firstContent : (Array.isArray(firstContent) ? (firstContent.find(c => c.type === 'text')?.text || 'Image Message') : 'New Chat');
     let title = firstText.substring(0, 50);
-    if (!currentChatId && messages.length >= 1) title = await generateChatTitle();
+    if (currentCharacter) {
+      title = `Chatting with ${currentCharacter.name}`;
+    } else if (!currentChatId && messages.length >= 1) {
+      title = await generateChatTitle();
+    }
 
     const messagesForStorage = messages.map(m => {
       if (m.type === 'image' && m.imageBase64) {
@@ -310,7 +413,7 @@ async function saveCurrentChat() {
       return m;
     });
 
-    const data = { userId: currentUser.uid, title, messages: messagesForStorage, model: currentModel, updatedAt: serverTimestamp() };
+    const data = { userId: currentUser.uid, title, messages: messagesForStorage, model: currentModel, isAdultContent, ageConfirmed, updatedAt: serverTimestamp() };
     if (currentChatId) { await updateDoc(doc(db, 'chats', currentChatId), data); }
     else { const ref = await addDoc(collection(db, 'chats'), { ...data, createdAt: serverTimestamp() }); currentChatId = ref.id; }
     await loadChatHistory();
@@ -319,6 +422,8 @@ async function saveCurrentChat() {
 
 window.newChat = async function () {
   currentChatId = null; messages = [];
+  isAdultContent = false;
+  ageConfirmed = false;
   const snap = await getDoc(doc(db, 'users', currentUser.uid));
   const data = snap.exists() ? snap.data() : {};
   const name = (data.displayName || currentUser.displayName || currentUser.email).split(' ')[0];
@@ -329,6 +434,7 @@ window.newChat = async function () {
     cc.innerHTML = `<div class="welcome-screen"><div class="welcome-title">Welcome to Snyaptium, ${name}</div><div class="welcome-subtitle">Your intelligent AI companion ready to assist with any task.</div><div class="suggestion-cards">${aiRecommendations.map((s, i) => `<div class="suggestion-card loaded" style="animation-delay:${i*0.1}s" onclick="useSuggestion('${s.prompt.replace(/'/g,"\\'")}')"><div class="suggestion-card-title">${s.title}</div><div class="suggestion-card-text">${s.text}</div></div>`).join('')}</div></div>`;
   }
   updateHistoryList();
+  updateBotSelectorState();
   if (window.innerWidth <= 768) { document.querySelector('.sidebar')?.classList.remove('mobile-open'); document.querySelector('.mobile-sidebar-overlay')?.classList.remove('active'); }
 };
 
@@ -337,7 +443,100 @@ function initCustomDropdown() {
   cs.addEventListener('click', (e) => { e.stopPropagation(); mo.classList.add('active'); });
   mo.addEventListener('click', (e) => { if (e.target === mo) mo.classList.remove('active'); });
   opts.forEach(o => { o.addEventListener('click', (e) => { e.stopPropagation(); opts.forEach(x => x.classList.remove('selected')); o.classList.add('selected'); sm.textContent = o.querySelector('.model-option-name').textContent; currentModel = o.getAttribute('data-value'); mo.classList.remove('active'); addSystemMessage(`Model changed to ${sm.textContent}`); }); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') mo.classList.remove('active'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { mo.classList.remove('active'); document.getElementById('botOverlay')?.classList.remove('active'); } });
+}
+
+function initBotSelector() {
+  const bs = document.getElementById('botSelect'), bo = document.getElementById('botOverlay');
+  if (!bs || !bo) return;
+  bs.addEventListener('click', (e) => { if (messages.length === 0) { e.stopPropagation(); bo.classList.add('active'); } });
+  bo.addEventListener('click', (e) => { if (e.target === bo) bo.classList.remove('active'); });
+  document.querySelector('.bot-option[data-bot-id=""]')?.addEventListener('click', () => selectCharacter(null));
+
+  document.getElementById('ageConfirmCancel')?.addEventListener('click', window.cancelAgeConfirm);
+  document.getElementById('ageConfirmConfirm')?.addEventListener('click', window.confirmAge);
+}
+
+function updateBotSelectorState() {
+  const bs = document.getElementById('botSelect');
+  if (!bs) return;
+  if (messages.length > 0) {
+    bs.style.opacity = '0.5';
+    bs.style.pointerEvents = 'none';
+  } else {
+    bs.style.opacity = '1';
+    bs.style.pointerEvents = 'auto';
+  }
+}
+
+async function checkAdultContent(text) {
+  console.log('checkAdultContent called with text length:', text.length);
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a content moderator. Analyze the given text for adult/NSFW content. Respond with ONLY "ADULT" if the content contains adult/NSFW material (sexual content, explicit violence, etc.) or "SAFE" if it is safe. No other text.'
+          },
+          {
+            role: 'user',
+            content: text
+          }
+        ],
+        max_tokens: 10,
+        temperature: 0.1
+      })
+    });
+    console.log('Adult content check response status:', response.status);
+    const data = await response.json();
+    console.log('Adult content check response data:', data);
+    const result = data.choices?.[0]?.message?.content?.trim().toUpperCase();
+    console.log('Adult content check result:', result);
+    return result === 'ADULT';
+  } catch (e) {
+    console.error('Error checking adult content:', e);
+    return false;
+  }
+}
+
+function showAgeConfirm() {
+  document.getElementById('ageConfirmOverlay').classList.add('active');
+}
+
+function hideAgeConfirm() {
+  document.getElementById('ageConfirmOverlay').classList.remove('active');
+}
+
+window.confirmAge = async function() {
+  ageConfirmed = true;
+  isAdultContent = true;
+  hideAgeConfirm();
+  await saveAgeConfirmation();
+};
+
+window.cancelAgeConfirm = function() {
+  hideAgeConfirm();
+  newChat();
+};
+
+async function saveAgeConfirmation() {
+  if (!currentChatId || !currentUser) return;
+  try {
+    await updateDoc(doc(db, 'chats', currentChatId), {
+      isAdultContent: true,
+      ageConfirmed: true,
+      updatedAt: serverTimestamp()
+    });
+  } catch (e) {
+    console.error('Error saving age confirmation:', e);
+  }
 }
 
 window.useSuggestion = (text) => { document.getElementById('userInput').value = text; sendMessage(); };
@@ -347,6 +546,8 @@ window.handleKeyPress = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preve
 function hideWelcomeScreen() { document.querySelector('.welcome-screen')?.remove(); }
 
 function addMessageToUI(content, type) {
+  console.log('addMessageToUI called with type:', type, 'content length:', content.length);
+  console.log('addMessageToUI content preview:', content.substring(0, 100));
   hideWelcomeScreen();
   const cc = document.getElementById('chatContainer');
   const w  = document.createElement('div'); w.className = `message-wrapper ${type}`;
@@ -358,10 +559,25 @@ function addMessageToUI(content, type) {
   const mc = document.createElement('div'); mc.className = 'message-content';
   if (type === 'ai') {
     mc.innerHTML = marked.parse(content);
+    
+    // Use MutationObserver to continuously clean memory JSON during/after streaming
+    const observer = new MutationObserver(() => {
+      const memoryPattern = /\[MEMORY:\s*\{[^}]*\}\s*\]/g;
+      if (memoryPattern.test(mc.innerHTML)) {
+        mc.innerHTML = mc.innerHTML.replace(memoryPattern, '');
+        console.log('Memory JSON removed from DOM via MutationObserver');
+      }
+    });
+    observer.observe(mc, { childList: true, subtree: true });
+    
+    // Stop observing after 3 seconds
+    setTimeout(() => observer.disconnect(), 3000);
+    
     const sb = document.createElement('button'); sb.className = 'speaker-btn'; sb.innerHTML = '<i class="fas fa-volume-up"></i> Listen'; sb.onclick = () => speakText(content, sb); mc.appendChild(sb);
     setTimeout(() => { if (typeof window.detectAndCreateArtifacts === 'function') window.detectAndCreateArtifacts(mc); }, 100);
   } else { mc.textContent = content; }
   w.appendChild(av); w.appendChild(mc); cc.appendChild(w); cc.scrollTop = cc.scrollHeight;
+  updateBotSelectorState();
 }
 
 function addSystemMessage(content) {
@@ -385,6 +601,7 @@ function showTypingIndicator() {
 function hideTypingIndicator() { document.getElementById('typingIndicator')?.remove(); }
 
 window.sendMessage = async function () {
+  console.log('sendMessage called');
   const input   = document.getElementById('userInput');
   const sendBtn = document.getElementById('sendBtn');
   const msg     = input.value.trim();
@@ -418,6 +635,14 @@ window.sendMessage = async function () {
       addMessageToUI(clean, 'ai');
       messages.push({ role: 'assistant', content: clean });
       if (entry?.key && entry?.value) await saveMemoryEntry(entry.key, entry.value);
+
+      const isAdult = await checkAdultContent(clean);
+      console.log('Vision AI response adult check result:', isAdult);
+      if (isAdult && !ageConfirmed) {
+        isAdultContent = true;
+        showAgeConfirm();
+      }
+
       await saveCurrentChat();
     } catch (e) {
       hideTypingIndicator();
@@ -431,15 +656,46 @@ window.sendMessage = async function () {
 
   if (typeof window.sendMessageWithImageGen === 'function') {
     const wrappedAddMessage = (content, type) => {
+      console.log('wrappedAddMessage called with type:', type, 'content length:', content.length);
       if (type === 'ai') {
         const { clean, entry } = extractAndStripMemory(content);
+        console.log('After stripMemory - clean length:', clean.length, 'entry:', entry);
         if (entry?.key && entry?.value) saveMemoryEntry(entry.key, entry.value);
+        
+        // Update the last message in messages array with cleaned text
+        if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+          messages[messages.length - 1].content = clean;
+          console.log('Updated messages array with cleaned text');
+        }
+        
         addMessageToUI(clean, type);
+
+        checkAdultContent(clean).then(isAdult => {
+          console.log('Image gen AI response adult check result:', isAdult);
+          if (isAdult && !ageConfirmed) {
+            isAdultContent = true;
+            showAgeConfirm();
+          }
+        });
       } else {
         addMessageToUI(content, type);
       }
     };
-    await window.sendMessageWithImageGen(API_KEY, API_URL, currentUser, messages, currentModel, buildSystemPrompt(), saveCurrentChat, wrappedAddMessage, hideTypingIndicator, showTypingIndicator);
+    
+    // Intercept and clean the response before it's processed
+    const originalSaveChat = saveCurrentChat;
+    const interceptedSaveChat = async () => {
+      // Clean all assistant messages before saving
+      messages.forEach(m => {
+        if (m.role === 'assistant' && typeof m.content === 'string') {
+          const { clean } = extractAndStripMemory(m.content);
+          m.content = clean;
+        }
+      });
+      await originalSaveChat();
+    };
+    
+    await window.sendMessageWithImageGen(API_KEY, API_URL, currentUser, messages, currentModel, buildSystemPrompt(), interceptedSaveChat, wrappedAddMessage, hideTypingIndicator, showTypingIndicator);
     return;
   }
 
@@ -447,6 +703,13 @@ window.sendMessage = async function () {
   messages.push({ role: 'user', content: msg });
   input.value = ''; input.style.height = 'auto'; input.disabled = true; sendBtn.disabled = true;
   showTypingIndicator();
+
+  const isUserAdult = await checkAdultContent(msg);
+  console.log('User message adult check result:', isUserAdult);
+  if (isUserAdult && !ageConfirmed) {
+    isAdultContent = true;
+    showAgeConfirm();
+  }
 
   const sanitizedMsgs = messages.map(m => ({
     ...m,
@@ -475,6 +738,7 @@ window.sendMessage = async function () {
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
     let raw = '';
+    let adultDetected = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -492,9 +756,28 @@ window.sendMessage = async function () {
             mc.innerHTML = marked.parse(liveClean);
             cc.scrollTop = cc.scrollHeight;
             await new Promise(r => setTimeout(r, 18));
+
+            // Check for adult content during streaming
+            if (!adultDetected && liveClean.length > 50) {
+              const isAdult = await checkAdultContent(liveClean);
+              if (isAdult) {
+                adultDetected = true;
+                console.log('Adult content detected during streaming');
+                reader.cancel(); // Stop the stream
+                if (!ageConfirmed) {
+                  isAdultContent = true;
+                  showAgeConfirm();
+                }
+                // Exit immediately without continuing
+                hideTypingIndicator();
+                input.disabled = false; sendBtn.disabled = false; input.focus();
+                return;
+              }
+            }
           }
         } catch (_) {}
       }
+      if (adultDetected) break;
     }
 
     mc.classList.remove('streaming');
@@ -514,6 +797,13 @@ window.sendMessage = async function () {
     sb.onclick = () => speakText(clean, sb);
     mc.appendChild(sb);
     setTimeout(() => { if (typeof window.detectAndCreateArtifacts === 'function') window.detectAndCreateArtifacts(mc); }, 100);
+
+    const isAdult = await checkAdultContent(clean);
+    console.log('Streaming AI response adult check result:', isAdult);
+    if (isAdult && !ageConfirmed) {
+      isAdultContent = true;
+      showAgeConfirm();
+    }
 
     messages.push({ role: 'assistant', content: clean });
     if (entry?.key && entry?.value) await saveMemoryEntry(entry.key, entry.value);

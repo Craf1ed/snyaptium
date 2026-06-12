@@ -67,6 +67,22 @@
   </div>
 </div>
 
+<div class="bot-overlay" id="botOverlay">
+  <div class="bot-modal">
+    <div class="model-modal-title">Select Character</div>
+    <div class="model-modal-subtitle">Choose a custom character or use default Snyaptium</div>
+    <div class="bot-option selected" data-bot-id="">
+      <div class="bot-option-name">None (Snyaptium)</div>
+      <div class="bot-option-desc">Default AI assistant</div>
+    </div>
+    <div id="botOptionsList"></div>
+    <div id="characterTip" class="character-tip" style="display: none;">
+      <i class="fas fa-lightbulb"></i>
+      <span>No characters yet. <a href="ai-studio.html">Create one here</a></span>
+    </div>
+  </div>
+</div>
+
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-modal">
     <div class="confirm-icon">
@@ -81,6 +97,20 @@
       <button class="confirm-btn confirm-btn-delete" id="confirmDelete">
         <i class="fas fa-trash"></i> Delete
       </button>
+    </div>
+  </div>
+</div>
+
+<div class="age-confirm-overlay" id="ageConfirmOverlay">
+  <div class="age-confirm-modal">
+    <div class="age-confirm-icon">
+      <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <div class="age-confirm-title">Adult Content Detected</div>
+    <div class="age-confirm-message">This chat contains adult content. Are you 18 years or older?</div>
+    <div class="age-confirm-buttons">
+      <button class="age-confirm-btn-cancel" id="ageConfirmCancel">No, Exit Chat</button>
+      <button class="age-confirm-btn-confirm" id="ageConfirmConfirm">Yes, I'm 18+</button>
     </div>
   </div>
 </div>
@@ -106,10 +136,13 @@
 
 <div id="mainApp" style="display: none; width: 100%;">
   <div class="sidebar">
-    <div class="logo">Snyaptium</div>
+    <div class="logo">Snyaptium AI</div>
     <div class="user-info">
       <div class="user-name" id="userName">Loading...</div>
       <div class="user-actions">
+        <a class="ai-studio-btn" href="ai-studio.html" title="AI Studio">
+          <i class="fas fa-masks-theater"></i>
+        </a>
         <a class="settings-btn" href="account.html" title="Account Settings">
           <i class="fas fa-cog"></i>
         </a>
@@ -160,6 +193,11 @@
       <div class="model-selector-input">
         <div class="custom-select" id="customSelect">
           <span id="selectedModel">LLaMA 3.3 70B Versatile</span>
+        </div>
+      </div>
+      <div class="bot-selector-input">
+        <div class="custom-select" id="botSelect">
+          <span id="selectedBot">Choose a Character</span>
         </div>
       </div>
       <div class="input-wrapper">

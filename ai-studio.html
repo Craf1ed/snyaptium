@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snyaptium AI Studio</title>
+<link rel="icon" type="image/png" href="img/logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="css/ai-studio.css">
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div id="loadingScreen" class="loading-screen">Loading...</div>
+
+<div id="toast" class="toast"></div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-modal">
+    <div class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
+    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    <div class="confirm-message" id="confirmMessage">This action cannot be undone.</div>
+    <div class="confirm-buttons">
+      <button class="confirm-btn-cancel" id="confirmCancel"><i class="fas fa-times"></i> Cancel</button>
+      <button class="confirm-btn-delete" id="confirmDelete"><i class="fas fa-trash"></i> Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none;">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="img/logo.png" alt="Snyaptium" onerror="this.style.display='none'">
+      <span>Snyaptium AI</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="chat.html" class="nav-item">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back to Chat</span>
+      </a>
+      <a href="ai-studio.html" class="nav-item active">
+        <i class="fas fa-masks-theater"></i>
+        <span>AI Studio</span>
+      </a>
+      <a href="account.html" class="nav-item">
+        <i class="fas fa-user-circle"></i>
+        <span>Account</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-avatar" id="sidebarAvatar">U</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="sidebarName">Loading…</div>
+        <div class="sidebar-user-email" id="sidebarEmail"></div>
+      </div>
+      <button class="logout-btn" id="logoutBtn" title="Sign out">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">AI Studio</h1>
+        <p class="page-subtitle">Create and tune custom AI characters with unique personalities.</p>
+      </div>
+      <button class="mobile-back-btn" onclick="history.back()">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+    </header>
+
+    <div class="studio-grid">
+
+      <section class="card" id="createBotCard">
+        <div class="card-header">
+          <span class="card-icon"><i class="fas fa-plus-circle"></i></span>
+          <h2 class="card-title">Create New Character</h2>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Character Name</label>
+          <div class="field-wrap">
+            <i class="fas fa-robot field-icon"></i>
+            <input type="text" id="botNameInput" class="field-input" placeholder="e.g. Code Assistant, Creative Writer">
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">System Prompt</label>
+          <div class="field-wrap">
+            <textarea id="botPromptInput" class="field-input textarea" placeholder="Define your character's personality, expertise, and behavior. This will be the system prompt used in conversations..." rows="8"></textarea>
+          </div>
+          <span class="field-hint">This prompt defines how the AI will behave. Be specific about tone, expertise, and constraints.</span>
+        </div>
+        <button class="btn btn-primary" id="createBotBtn">
+          <i class="fas fa-plus"></i> Create Character
+        </button>
+      </section>
+
+      <section class="card" id="myBotsCard">
+        <div class="card-header">
+          <span class="card-icon"><i class="fas fa-list"></i></span>
+          <h2 class="card-title">My Characters</h2>
+        </div>
+        <div class="bot-list" id="botList">
+          <div class="bot-empty" id="botEmpty">
+            <i class="fas fa-robot"></i>
+            <span>No characters yet. Create your first character above.</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script type="module" src="js/ai-studio.js"></script>
+<script src="js/particles.js"></script>
+</body>
+</html>
