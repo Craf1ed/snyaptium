@@ -70,15 +70,11 @@
 <div class="bot-overlay" id="botOverlay">
   <div class="bot-modal">
     <div class="model-modal-title">Select Character</div>
-    <div class="model-modal-subtitle">Choose a custom character or use default Snyaptium</div>
-    <div class="bot-option selected" data-bot-id="">
-      <div class="bot-option-name">None (Snyaptium)</div>
-      <div class="bot-option-desc">Default AI assistant</div>
-    </div>
+    <div class="model-modal-subtitle">Choose a character to chat with</div>
     <div id="botOptionsList"></div>
     <div id="characterTip" class="character-tip" style="display: none;">
       <i class="fas fa-lightbulb"></i>
-      <span>No characters yet. <a href="ai-studio.html">Create one here</a></span>
+      <span>No custom characters yet. <a href="ai-studio.html">Create one here</a></span>
     </div>
   </div>
 </div>
@@ -134,6 +130,20 @@
   </div>
 </div>
 
+<div class="legal-modal-overlay" id="legalModalOverlay">
+  <div class="legal-modal">
+    <div class="legal-modal-header">
+      <div class="legal-modal-title" id="legalModalTitle">Terms of Service</div>
+      <button class="legal-modal-close" onclick="closeLegalModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="legal-modal-content" id="legalModalContent">
+      <!-- Content will be loaded here -->
+    </div>
+  </div>
+</div>
+
 <div id="mainApp" style="display: none; width: 100%;">
   <div class="sidebar">
     <div class="logo">Snyaptium AI</div>
@@ -157,6 +167,13 @@
     <div class="chat-history">
       <div class="chat-history-title">Recent Chats</div>
       <div id="historyList"></div>
+    </div>
+    <a class="sidebar-account-link" href="account.html">
+      <i class="fas fa-user-circle"></i> Account
+    </a>
+    <div class="sidebar-legal-links">
+      <a class="sidebar-legal-link" onclick="showTOS()">Terms Of Service</a>
+      <a class="sidebar-legal-link" onclick="showPP()">Privacy Policy</a>
     </div>
   </div>
 

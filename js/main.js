@@ -45,8 +45,32 @@ let pendingImage   = null;
 let isAdultContent = false;
 let ageConfirmed   = false;
 
+// ============================================================
+// DEFAULT CHARACTERS - Add more characters here
+// Format: { name: "Character Name", prompt: "System prompt describing the character", desc: "Short description for UI" }
+// ============================================================
+const defaultCharacters = [
+  {
+    name: "Default",
+    prompt: "You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.",
+    desc: "Default AI assistant for general tasks"
+  },
+  {
+    name: "Creative Writer",
+    prompt: "You are a creative writer with a passion for storytelling. You excel at crafting engaging narratives, developing compelling characters, and exploring various genres. You provide constructive feedback on writing and help users improve their storytelling skills.",
+    desc: "Expert in storytelling and creative writing"
+  },
+  {
+    name: "Code Expert",
+    prompt: "You are an expert programmer with deep knowledge across multiple languages and frameworks. You help users write clean, efficient, and well-documented code. You explain complex concepts clearly and provide best practices for software development.",
+    desc: "Programming expert for all languages"
+  },
+  // ADD MORE DEFAULT CHARACTERS ABOVE THIS LINE
+];
+// ============================================================
+
 function buildSystemPrompt() {
-  let content = currentCharacter ? currentCharacter.prompt : 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. Always strive to provide accurate, helpful, and comprehensive responses.';
+  let content = currentCharacter ? currentCharacter.prompt : 'You are Snyaptium AI, an intelligent and helpful AI assistant created by Snyaptium. You are designed to assist users with a wide variety of tasks including answering questions, writing, coding, analysis, creative tasks, and more. You are knowledgeable, friendly, and professional. When communicating, use sophisticated vocabulary and smooth language while 100% also ensuring your responses remain easily understandable and flow/sound naturall and not forced. Strive for clarity and elegance in your expression. Always provide accurate, helpful, and comprehensive responses.';
 
   const entries = Object.entries(userMemory);
   if (entries.length > 0) {
@@ -85,6 +109,21 @@ function updateCharacterOptions() {
   const tip = document.getElementById('characterTip');
   if (!list) return;
   list.innerHTML = '';
+  
+  // Add default characters first
+  defaultCharacters.forEach((character, index) => {
+    const option = document.createElement('div');
+    option.className = 'bot-option';
+    option.setAttribute('data-bot-id', `default-${index}`);
+    option.innerHTML = `
+      <div class="bot-option-name">${escapeHtml(character.name)} <span class="bot-option-tag">Snyaptium</span></div>
+      <div class="bot-option-desc">${escapeHtml(character.desc || character.prompt.substring(0, 60))}${(character.desc || character.prompt).length > 60 ? '...' : ''}</div>
+    `;
+    option.addEventListener('click', () => selectCharacter(character));
+    list.appendChild(option);
+  });
+  
+  // Add user custom characters
   userCharacters.forEach(character => {
     const option = document.createElement('div');
     option.className = 'bot-option';
@@ -96,8 +135,17 @@ function updateCharacterOptions() {
     option.addEventListener('click', () => selectCharacter(character));
     list.appendChild(option);
   });
+  
   if (tip) {
     tip.style.display = userCharacters.length === 0 ? 'flex' : 'none';
+  }
+  
+  // Mark first default character as selected if no character is currently selected
+  if (!currentCharacter && defaultCharacters.length > 0) {
+    const firstDefault = list.querySelector('.bot-option[data-bot-id="default-0"]');
+    if (firstDefault) {
+      firstDefault.classList.add('selected');
+    }
   }
 }
 
@@ -187,12 +235,38 @@ function initImageUpload() {
       input.value = '';
       return;
     }
+
+    // Check and resize image to 1440p max
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const dataUrl = ev.target.result;
-      const base64  = dataUrl.split(',')[1];
-      pendingImage  = { base64, mimeType: file.type, previewUrl: dataUrl };
-      showImagePreview(dataUrl);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDimension = 2560; // 1440p is 2560x1440, so use max dimension
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const resizedDataUrl = canvas.toDataURL(file.type, 0.9);
+        const base64 = resizedDataUrl.split(',')[1];
+        pendingImage = { base64, mimeType: file.type, previewUrl: resizedDataUrl };
+        showImagePreview(resizedDataUrl);
+      };
+      img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
     input.value = '';
@@ -215,7 +289,7 @@ function showImagePreview(url) {
         <i class="fas fa-times"></i>
       </button>
     </div>
-    <span class="image-preview-label"><i class="fas fa-eye"></i> Vision mode — using Llama 4 Scout</span>
+    <span class="image-preview-label"><i class="fas fa-eye"></i> Image Identification Mode</span>
   `;
 }
 
@@ -289,6 +363,19 @@ onAuthStateChanged(auth, async (user) => {
     await loadChatHistory();
     initCustomDropdown();
     initBotSelector();
+    
+    // Check for chat ID in URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const chatIdFromUrl = urlParams.get('chat');
+    if (chatIdFromUrl) {
+      const chat = chatHistory.find(c => c.id === chatIdFromUrl);
+      if (chat) {
+        loadChat(chatIdFromUrl);
+      } else {
+        // Chat not found, clear the URL parameter
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
     initMobileUI();
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('mainApp').style.display       = 'flex';
@@ -365,7 +452,7 @@ window.loadChat = async function (chatId) {
   currentChatId = chatId; messages = chat.messages || []; currentModel = chat.model || 'llama-3.3-70b-versatile';
   isAdultContent = chat.isAdultContent || false;
   ageConfirmed = chat.ageConfirmed || false;
-  const names = { 'llama-3.3-70b-versatile': 'LLaMA 3.3 70B Versatile', 'llama-3.1-8b-instant': 'LLaMA 3.1 8B Instant', 'compound-beta': 'Groq Compound Beta', 'openai/gpt-oss-120b': 'GPT OSS 120B', 'openai/gpt-oss-20b': 'GPT OSS 20B', 'groq/compound-mini': 'Groq Compound Mini', 'qwen/qwen3-32b': 'Qwen3 32B', 'moonshotai/kimi-k2-instruct-0905': 'Kimi K2' };
+  const names = { 'llama-3.3-70b-versatile': 'LLaMA 3.3 70B Versatile', 'llama-3.1-8b-instant': 'LLaMA 3.1 8B Instant', 'compound-beta': 'Groq Compound Beta', 'openai/gpt-oss-120b': 'GPT OSS 120B', 'openai/gpt-oss-20b': 'GPT OSS 20B', 'groq/compound-mini': 'Groq Compound Mini', 'qwen/qwen3-32b': 'Qwen3 32B' };
   document.getElementById('selectedModel').textContent = names[currentModel] || 'LLaMA 3.3 70B Versatile';
   document.querySelectorAll('.model-option').forEach(o => o.classList.toggle('selected', o.getAttribute('data-value') === currentModel));
   if (typeof window.loadChatWithImages === 'function') {
@@ -379,6 +466,11 @@ window.loadChat = async function (chatId) {
   if (isAdultContent && !ageConfirmed) {
     showAgeConfirm();
   }
+  
+  // Update URL with chat ID
+  const url = new URL(window.location);
+  url.searchParams.set('chat', chatId);
+  window.history.replaceState({}, '', url);
 };
 
 async function saveCurrentChat() {
@@ -395,18 +487,19 @@ async function saveCurrentChat() {
 
     const messagesForStorage = messages.map(m => {
       if (m.type === 'image' && m.imageBase64) {
-        return { ...m, imageBase64: '[IMAGE_DATA]', _hasImage: true };
+        // Keep the actual image data instead of stripping it
+        return { ...m };
       }
       if (Array.isArray(m.content)) {
         const textPart = m.content.find(c => c.type === 'text')?.text || '';
         const imgPart  = m.content.find(c => c.type === 'image_url');
         const imgUrl   = imgPart?.image_url?.url || null;
-        const safeImgUrl = imgUrl && imgUrl.startsWith('data:') ? '[IMAGE_DATA]' : imgUrl;
+        // Keep the actual image data instead of stripping it
         return {
           ...m,
           content: [
             { type: 'text', text: textPart },
-            ...(safeImgUrl ? [{ type: 'image_url', image_url: { url: safeImgUrl }, _originalUrl: true }] : [])
+            ...(imgUrl ? [{ type: 'image_url', image_url: { url: imgUrl } }] : [])
           ]
         };
       }
@@ -436,6 +529,11 @@ window.newChat = async function () {
   updateHistoryList();
   updateBotSelectorState();
   if (window.innerWidth <= 768) { document.querySelector('.sidebar')?.classList.remove('mobile-open'); document.querySelector('.mobile-sidebar-overlay')?.classList.remove('active'); }
+  
+  // Clear chat ID from URL
+  const url = new URL(window.location);
+  url.searchParams.delete('chat');
+  window.history.replaceState({}, '', url);
 };
 
 function initCustomDropdown() {
@@ -947,7 +1045,55 @@ window.speakText = async function (text, button) {
 window.toggleSidebar = function () {
   const s = document.querySelector('.sidebar'), b = document.querySelector('.sidebar-toggle-btn');
   s.classList.toggle('collapsed');
-  b.querySelector('i').className = s.classList.contains('collapsed') ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+  const icon = b.querySelector('i');
+  if (icon) {
+    icon.className = s.classList.contains('collapsed') ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+  }
+};
+
+window.showTOS = function() {
+  const overlay = document.getElementById('legalModalOverlay');
+  const title = document.getElementById('legalModalTitle');
+  const content = document.getElementById('legalModalContent');
+  
+  title.textContent = 'Terms of Service';
+  content.innerHTML = `
+    <h3>1. Acceptance of Terms</h3>
+    <p>By accessing and using Snyaptium AI, you agree to be bound by these Terms of Service.</p>
+    <h3>2. Use License</h3>
+    <p>Permission is granted to use Snyaptium AI for personal, non-commercial purposes.</p>
+    <h3>3. Disclaimer</h3>
+    <p>The materials on Snyaptium AI are provided "as is". Snyaptium makes no warranties regarding the accuracy or reliability of the materials.</p>
+    <h3>4. Limitations</h3>
+    <p>In no event shall Snyaptium be liable for any damages arising out of the use or inability to use the materials.</p>
+  `;
+  
+  overlay.style.display = 'flex';
+};
+
+window.showPP = function() {
+  const overlay = document.getElementById('legalModalOverlay');
+  const title = document.getElementById('legalModalTitle');
+  const content = document.getElementById('legalModalContent');
+  
+  title.textContent = 'Privacy Policy';
+  content.innerHTML = `
+    <h3>1. Information Collection</h3>
+    <p>We collect information you provide directly to us, such as when you create an account or use our services.</p>
+    <h3>2. Use of Information</h3>
+    <p>We use the information we collect to provide, maintain, and improve our services.</p>
+    <h3>3. Information Sharing</h3>
+    <p>We do not share your personal information with third parties except as described in this policy.</p>
+    <h3>4. Data Security</h3>
+    <p>We implement appropriate security measures to protect your personal information.</p>
+  `;
+  
+  overlay.style.display = 'flex';
+};
+
+window.closeLegalModal = function() {
+  const overlay = document.getElementById('legalModalOverlay');
+  overlay.style.display = 'none';
 };
 
 window.addEventListener('resize', () => { if (window.innerWidth <= 768 && !document.querySelector('.mobile-header')) initMobileUI(); });
